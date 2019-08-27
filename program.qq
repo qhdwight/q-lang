@@ -1,8 +1,12 @@
-func outputs integer inputs nothing {
-    impl main {
-        output 0;
+package main {
+    func void -> int {
+        impl main {
+            out 0;
+        }
     }
-}
-{
-    Yeah ok
+    func int, int -> int {
+        impl calc(a, b) {
+            out a + b;
+        }
+    }
 }

@@ -18,9 +18,17 @@ namespace ql::parse {
         }
     }
 
-    std::vector<std::string> Parser::extractScopes(std::string code) {
-        auto level = 0;
+//    std::vector<std::string>
+
+    std::vector<std::string> Parser::extractScopes(std::string const& code) {
         std::vector<std::string> scopes;
+        recurseScopes(code, scopes);
+        return scopes;
+    }
+
+    void Parser::recurseScopes(std::string const& code, std::vector<std::string>& scopes) {
+        scopes.push_back(code);
+        auto level = 0;
         int topOpeningIndex = 0;
         for (int i = 0; i < static_cast<int>(code.size()); i++) {
             char c = code[i];
@@ -35,10 +43,9 @@ namespace ql::parse {
                     auto contents = code.substr(topOpeningIndex + 1, i - topOpeningIndex - 1);
                     boost::algorithm::erase_all(contents, "\n");
                     boost::algorithm::erase_all(contents, "\r");
-                    scopes.push_back(contents);
+                    recurseScopes(contents, scopes);
                 }
             }
         }
-        return scopes;
     }
 }

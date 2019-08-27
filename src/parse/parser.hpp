@@ -11,6 +11,8 @@ namespace ql::parse {
     public:
         std::shared_ptr<ParseNode> parse(po::variables_map& options);
 
-        std::vector<std::string> extractScopes(std::string code);
+        std::vector<std::string> extractScopes(std::string const& code);
+
+        void recurseScopes(std::string const& code, std::vector<std::string>& scopes);
     };
 }
