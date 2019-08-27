@@ -1,0 +1,8 @@
+func outputs integer inputs nothing {
+    impl main {
+        output 0;
+    }
+}
+{
+    Yeah ok
+}
