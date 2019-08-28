@@ -1,24 +1,19 @@
 #pragma once
 
+#include "abstract_node.hpp"
+
 #include <memory>
 #include <vector>
 #include <utility>
 
 namespace ql::parse {
-    class ParseNode {
-    public:
-        typedef std::vector<std::shared_ptr<ParseNode>> ChildrenRef;
-        typedef std::weak_ptr<ParseNode> ParentRef;
+    class ParseNode : public AbstractNode {
     private:
-        ChildrenRef m_Children;
-        ParentRef m_Parent;
         std::string m_RawText;
     public:
-        ParseNode(std::string&& rawText, ParentRef parent)
-                : m_RawText(rawText), m_Parent(std::move(parent)) {}
+        ParseNode(std::string&& rawText, const ParentRef& parent)
+                : AbstractNode(parent), m_RawText(rawText) {}
 
         std::string_view getText() const { return m_RawText; }
-
-        void addChild(const std::shared_ptr<ParseNode>& node);
     };
 }

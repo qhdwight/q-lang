@@ -2,7 +2,7 @@
 
 #include <boost/program_options/variables_map.hpp>
 
-#include <parse/node/parse_node.hpp>
+#include <parse/node/master_node.hpp>
 
 namespace po = boost::program_options;
 
@@ -10,10 +10,10 @@ namespace ql::parse {
     class Parser {
     private:
     public:
-        std::shared_ptr<ParseNode> parse(po::variables_map& options);
+        std::shared_ptr<MasterNode> parse(po::variables_map& options);
 
-        std::shared_ptr<ParseNode> getNodes(std::string code);
+        std::shared_ptr<MasterNode> getNodes(std::string code);
 
-        void recurseNodes(const std::string& code, const std::weak_ptr<ParseNode>& parent, int depth = 0);
+        void recurseNodes(const std::string& code, const std::weak_ptr<AbstractNode>& parent, int depth = 0);
     };
 }

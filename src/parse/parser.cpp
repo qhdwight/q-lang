@@ -9,7 +9,7 @@
 #include <parse/node/parse_node.hpp>
 
 namespace ql::parse {
-    std::shared_ptr<ParseNode> Parser::parse(po::variables_map& options) {
+    std::shared_ptr<MasterNode> Parser::parse(po::variables_map& options) {
         auto sources = options["input"].as<std::vector<std::string>>();
         std::string sourceFileName = sources[0];
         auto src = util::readAllText(sourceFileName);
@@ -20,15 +20,15 @@ namespace ql::parse {
 //    std::vector<std::string>
 //    std::vector<std::string>
 
-    std::shared_ptr<ParseNode> Parser::getNodes(std::string code) {
-        auto parent = std::make_shared<ParseNode>(std::string(), ParseNode::ParentRef());
+    std::shared_ptr<MasterNode> Parser::getNodes(std::string code) {
+        auto parent = std::make_shared<MasterNode>();
         boost::algorithm::erase_all(code, "\n");
         boost::algorithm::erase_all(code, "\r");
         recurseNodes(code, parent);
         return parent;
     }
 
-    void Parser::recurseNodes(const std::string& code, const std::weak_ptr<ParseNode>& parent, int depth) {
+    void Parser::recurseNodes(const std::string& code, const std::weak_ptr<AbstractNode>& parent, int depth) {
         auto level = 0;
         int blockInfoStart = 0, blockStart = 0;
         for (int i = 0; i < static_cast<int>(code.size()); i++) {
