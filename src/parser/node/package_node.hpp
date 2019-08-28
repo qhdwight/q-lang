@@ -7,8 +7,8 @@ namespace ql::parser {
     private:
         std::string m_Name;
     public:
-        PackageNode(std::string const& rawText, ParentRef const& parent)
-                : ParseNode(rawText, parent) {}
+        PackageNode(std::string&& rawText, ParentRef const& parent)
+                : ParseNode(std::move(rawText), parent) {}
 
         void parse(std::string const& text) override;
     };

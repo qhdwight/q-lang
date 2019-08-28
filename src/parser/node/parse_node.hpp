@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utility>
+
 #include "abstract_node.hpp"
 
 namespace ql::parser {
@@ -7,7 +9,7 @@ namespace ql::parser {
     private:
         std::string m_RawText;
     public:
-        ParseNode(std::string const& rawText, ParentRef const& parent)
+        ParseNode(std::string&& rawText, ParentRef const& parent)
                 : AbstractNode(parent), m_RawText(rawText) {
             parse(m_RawText);
         }
