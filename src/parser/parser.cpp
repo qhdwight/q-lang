@@ -6,9 +6,9 @@
 #include <boost/program_options/variables_map.hpp>
 
 #include <util/read.hpp>
-#include <parse/node/parse_node.hpp>
+#include <parser/node/parse_node.hpp>
 
-namespace ql::parse {
+namespace ql::parser {
     std::shared_ptr<MasterNode> Parser::parse(po::variables_map& options) {
         auto sources = options["input"].as<std::vector<std::string>>();
         std::string sourceFileName = sources[0];

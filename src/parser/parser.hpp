@@ -2,11 +2,11 @@
 
 #include <boost/program_options/variables_map.hpp>
 
-#include <parse/node/master_node.hpp>
+#include <parser/node/master_node.hpp>
 
 namespace po = boost::program_options;
 
-namespace ql::parse {
+namespace ql::parser {
     class Parser {
     private:
     public:

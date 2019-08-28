@@ -2,7 +2,7 @@
 
 #include "abstract_node.hpp"
 
-namespace ql::parse {
+namespace ql::parser {
     class MasterNode : public AbstractNode {
     public:
         MasterNode() : AbstractNode(ParentRef()) {}

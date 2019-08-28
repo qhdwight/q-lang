@@ -4,7 +4,7 @@
 #include <vector>
 #include <utility>
 
-namespace ql::parse {
+namespace ql::parser {
     class AbstractNode {
     public:
         typedef std::vector<std::shared_ptr<AbstractNode>> ChildrenRef;

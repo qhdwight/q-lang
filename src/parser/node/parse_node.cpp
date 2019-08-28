@@ -1,5 +1,5 @@
 #include "parse_node.hpp"
 
-namespace ql::parse {
+namespace ql::parser {
 
 }

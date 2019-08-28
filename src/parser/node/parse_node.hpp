@@ -2,11 +2,7 @@
 
 #include "abstract_node.hpp"
 
-#include <memory>
-#include <vector>
-#include <utility>
-
-namespace ql::parse {
+namespace ql::parser {
     class ParseNode : public AbstractNode {
     private:
         std::string m_RawText;
