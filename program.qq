@@ -1,10 +1,11 @@
-package main {
-    func void -> int {
+pckg main {
+    def void -> int {
         impl main {
             out 0;
         }
     }
-    func int, int -> int {
+    calculable:
+    def int, int -> int {
         impl calc(a, b) {
             out a + b;
         }

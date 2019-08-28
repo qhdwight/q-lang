@@ -3,9 +3,7 @@
 #include "parse_node.hpp"
 
 namespace ql::parser {
-    class PackageNode : public ParseNode {
-    private:
-        std::string m_Name;
+    class DefineFunctionNode : public ParseNode {
     public:
         using ParseNode::ParseNode;
 
