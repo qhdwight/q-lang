@@ -14,6 +14,6 @@ namespace ql::parser {
 
         std::shared_ptr<MasterNode> getNodes(std::string code);
 
-        void recurseNodes(const std::string& code, const std::weak_ptr<AbstractNode>& parent, int depth = 0);
+        void recurseNodes(std::string const& code, std::weak_ptr<AbstractNode> const& parent, int depth = 0);
     };
 }

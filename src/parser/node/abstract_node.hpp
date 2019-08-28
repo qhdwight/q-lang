@@ -15,6 +15,6 @@ namespace ql::parser {
     public:
         explicit AbstractNode(ParentRef parent) : m_Parent(std::move(parent)) {}
 
-        void addChild(const std::shared_ptr<AbstractNode>& node);
+        void addChild(std::shared_ptr<AbstractNode> const& node);
     };
 }

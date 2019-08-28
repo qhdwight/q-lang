@@ -7,9 +7,13 @@ namespace ql::parser {
     private:
         std::string m_RawText;
     public:
-        ParseNode(std::string&& rawText, const ParentRef& parent)
-                : AbstractNode(parent), m_RawText(rawText) {}
+        ParseNode(std::string const& rawText, ParentRef const& parent)
+                : AbstractNode(parent), m_RawText(rawText) {
+            parse(m_RawText);
+        }
 
         std::string_view getText() const { return m_RawText; }
+
+        virtual void parse(std::string const& text) {};
     };
 }
