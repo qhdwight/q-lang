@@ -13,6 +13,11 @@
 #include <parser/node/package_node.hpp>
 
 namespace ql::parser {
+    Parser::Parser() {
+        registerNode<PackageNode>(m_NamesToNodes, "pckg");
+        registerNode<ParseNode>(m_NamesToNodes, "default");
+    }
+
     std::shared_ptr<MasterNode> Parser::parse(po::variables_map& options) {
         auto sources = options["input"].as<std::vector<std::string>>();
         std::string sourceFileName = sources[0];
@@ -21,27 +26,23 @@ namespace ql::parser {
         return node;
     }
 
-//    std::vector<std::string>
-//    std::vector<std::string>
+    std::shared_ptr<AbstractNode> Parser::getNode
+            (std::string const& nodeName, std::string&& blockWithInfo, std::vector<std::string>&& tokens, AbstractNode::ParentRef parent) {
+        // Check if we have a generator function that can make this requested time, or else use default
+        auto it = m_NamesToNodes.find(nodeName);
+        nodeFactory& nodeFactoryFunc = it == m_NamesToNodes.end() ? m_NamesToNodes["default"] : it->second;
+        auto node = nodeFactoryFunc(std::move(blockWithInfo), std::move(tokens), parent);
+        return node;
+    }
 
     std::shared_ptr<MasterNode> Parser::getNodes(std::string code) {
         auto parent = std::make_shared<MasterNode>();
-//        boost::erase_all(code, "\n");
-//        boost::erase_all(code, "\r");
         boost::remove_erase_if(code, boost::is_any_of("\n\r"));
         recurseNodes(code, parent);
         return parent;
     }
 
     void Parser::recurseNodes(std::string const& code, std::weak_ptr<AbstractNode> const& parent, int depth) {
-        using nodeFunc = std::function<std::shared_ptr<AbstractNode>(std::string&&, std::vector<std::string>&&, AbstractNode::ParentRef)>;
-        std::map<std::string, nodeFunc> nameToNode;
-        nameToNode.emplace("pckg", [](auto name, auto tokens, auto parent) {
-            return std::make_shared<PackageNode>(std::move(name), std::move(tokens), parent);
-        });
-        nameToNode.emplace("default", [](auto name, auto tokens, auto parent) {
-            return std::make_shared<ParseNode>(std::move(name), std::move(tokens), parent);
-        });
         auto level = 0;
         int blockInfoStart = 0, blockStart = 0;
         for (int i = 0; i < static_cast<int>(code.size()); i++) {
@@ -53,6 +54,7 @@ namespace ql::parser {
             } else if (c == '}') {
                 if (--level == 0) {
                     std::string blockWithInfo = code.substr(blockInfoStart, i - blockInfoStart + 1);
+                    std::cout << blockWithInfo << std::endl;
                     auto delimiters = boost::is_any_of("\t ");
                     // Trim is necessary since split will include empty strings in beginning if we do not
                     boost::trim_if(blockWithInfo, delimiters);
@@ -60,11 +62,7 @@ namespace ql::parser {
                     std::vector<std::string> tokens;
                     boost::split(tokens, blockWithInfo, delimiters, boost::token_compress_on);
                     std::string const& nodeName = tokens[0];
-                    std::cout << blockWithInfo << std::endl;
-                    // Check if we have a generator function that can make this requested time, or else use default
-                    auto it = nameToNode.find(nodeName);
-                    nodeFunc blockNodeFunc = it == nameToNode.end() ? nameToNode["default"] : it->second;
-                    auto child = blockNodeFunc(std::move(blockWithInfo), std::move(tokens), parent);
+                    auto child = getNode(nodeName, std::move(blockWithInfo), std::move(tokens), parent);
                     // Add children to parent node, parent node is owning via a shared pointer
                     parent.lock()->addChild(child);
                     // Recurse on the inner contents of the block so that each node added is for one block only
