@@ -6,45 +6,45 @@
 #include <boost/program_options/variables_map.hpp>
 
 #include <util/read.hpp>
+#include <parse/node/parse_node.hpp>
 
 namespace ql::parse {
     std::shared_ptr<ParseNode> Parser::parse(po::variables_map& options) {
         auto sources = options["input"].as<std::vector<std::string>>();
         std::string sourceFileName = sources[0];
         auto src = util::readAllText(sourceFileName);
-        auto scopes = extractScopes(src.value());
-        for (auto const& scope: scopes) {
-            std::cout << scope << std::endl;
-        }
+        auto node = getNodes(src.value());
+        return node;
     }
 
 //    std::vector<std::string>
+//    std::vector<std::string>
 
-    std::vector<std::string> Parser::extractScopes(std::string code) {
-        std::vector<std::string> scopes;
+    std::shared_ptr<ParseNode> Parser::getNodes(std::string code) {
+        auto parent = std::make_shared<ParseNode>(std::string(), ParseNode::ParentRef());
         boost::algorithm::erase_all(code, "\n");
         boost::algorithm::erase_all(code, "\r");
-        recurseScopes(code, scopes);
-        return scopes;
+        recurseNodes(code, parent);
+        return parent;
     }
 
-    void Parser::recurseScopes(const std::string& code, std::vector<std::string>& scopes, int depth) {
+    void Parser::recurseNodes(const std::string& code, const std::weak_ptr<ParseNode>& parent, int depth) {
         auto level = 0;
         int blockInfoStart = 0, blockStart = 0;
         for (int i = 0; i < static_cast<int>(code.size()); i++) {
             char c = code[i];
             if (c == '{') {
-                if (level == 0) {
+                if (level++ == 0) {
                     blockStart = i;
                 }
-                level++;
             } else if (c == '}') {
-                level--;
-                if (level == 0) {
+                if (--level == 0) {
                     std::string blockWithInfo = code.substr(blockInfoStart, i - blockInfoStart + 1);
-                    scopes.push_back(std::move(blockWithInfo));
+                    std::cout << blockWithInfo << std::endl;
+                    auto child = std::make_shared<ParseNode>(std::move(blockWithInfo), parent);
+                    parent.lock()->addChild(child);
                     std::string blockContents = code.substr(blockStart + 1, i - blockStart - 1);
-                    recurseScopes(blockContents, scopes, depth + 1);
+                    recurseNodes(blockContents, child, depth + 1);
                     blockInfoStart = i + 1;
                 }
             }

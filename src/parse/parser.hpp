@@ -1,7 +1,8 @@
 #pragma once
 
-#include <parse/parse_node.hpp>
 #include <boost/program_options/variables_map.hpp>
+
+#include <parse/node/parse_node.hpp>
 
 namespace po = boost::program_options;
 
@@ -11,8 +12,8 @@ namespace ql::parse {
     public:
         std::shared_ptr<ParseNode> parse(po::variables_map& options);
 
-        std::vector<std::string> extractScopes(std::string code);
+        std::shared_ptr<ParseNode> getNodes(std::string code);
 
-        void recurseScopes(const std::string& code, std::vector<std::string>& scopes, int depth = 0);
+        void recurseNodes(const std::string& code, const std::weak_ptr<ParseNode>& parent, int depth = 0);
     };
 }
