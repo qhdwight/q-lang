@@ -1,5 +1,6 @@
 #include "parser.hpp"
 
+#include <utility>
 #include <iostream>
 
 #include <boost/algorithm/string/trim.hpp>
@@ -11,11 +12,15 @@
 
 #include <util/read.hpp>
 #include <parser/node/package_node.hpp>
+#include <parser/node/def_function_node.hpp>
+#include <parser/node/impl_function_node.hpp>
 
 namespace ql::parser {
     Parser::Parser() {
-        registerNode<PackageNode>(m_NamesToNodes, "pckg");
-        registerNode<ParseNode>(m_NamesToNodes, "default");
+        registerNode<PackageNode>("pckg");
+        registerNode<ParseNode>("default");
+        registerNode<DefineFunctionNode>("def");
+        registerNode<ImplementFunctionNode>("impl");
     }
 
     std::shared_ptr<MasterNode> Parser::parse(po::variables_map& options) {
@@ -31,7 +36,7 @@ namespace ql::parser {
         // Check if we have a generator function that can make this requested time, or else use default
         auto it = m_NamesToNodes.find(nodeName);
         nodeFactory& nodeFactoryFunc = it == m_NamesToNodes.end() ? m_NamesToNodes["default"] : it->second;
-        auto node = nodeFactoryFunc(std::move(blockWithInfo), std::move(tokens), parent);
+        auto node = nodeFactoryFunc(std::move(blockWithInfo), std::move(tokens), std::move(parent));
         return node;
     }
 
@@ -54,7 +59,6 @@ namespace ql::parser {
             } else if (c == '}') {
                 if (--level == 0) {
                     std::string blockWithInfo = code.substr(blockInfoStart, i - blockInfoStart + 1);
-                    std::cout << blockWithInfo << std::endl;
                     auto delimiters = boost::is_any_of("\t ");
                     // Trim is necessary since split will include empty strings in beginning if we do not
                     boost::trim_if(blockWithInfo, delimiters);
@@ -62,6 +66,7 @@ namespace ql::parser {
                     std::vector<std::string> tokens;
                     boost::split(tokens, blockWithInfo, delimiters, boost::token_compress_on);
                     std::string const& nodeName = tokens[0];
+                    std::cout << nodeName << ": " << blockWithInfo << std::endl;
                     auto child = getNode(nodeName, std::move(blockWithInfo), std::move(tokens), parent);
                     // Add children to parent node, parent node is owning via a shared pointer
                     parent.lock()->addChild(child);

@@ -14,8 +14,8 @@ namespace ql::parser {
         std::map<std::string, nodeFactory> m_NamesToNodes;
 
         template<typename TNode>
-        void registerNode(std::map<std::string, nodeFactory>& nameToNode, std::string_view nodeName) {
-            nameToNode.emplace(nodeName, [](auto name, auto tokens, auto parent) {
+        void registerNode(std::string_view nodeName) {
+            m_NamesToNodes.emplace(nodeName, [](auto name, auto tokens, auto parent) {
                 return std::make_shared<TNode>(std::move(name), std::move(tokens), parent);
             });
         }
