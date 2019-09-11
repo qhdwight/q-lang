@@ -4,7 +4,6 @@ pckg main {
             out 0;
         }
     }
-    calculable:
     def int, int -> int {
         impl calc(a, b) {
             out a + b;

@@ -1,0 +1,12 @@
+#pragma once
+
+#include <parser/node/parse_node.hpp>
+
+namespace ql::parser {
+    class ImplementFunctionNode : public ParseNode {
+    public:
+        using ParseNode::ParseNode;
+
+        void parse() override;
+    };
+}

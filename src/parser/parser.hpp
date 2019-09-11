@@ -2,6 +2,7 @@
 
 #include <boost/program_options/variables_map.hpp>
 
+#include <parser/node/parse_node.hpp>
 #include <parser/node/master_node.hpp>
 
 namespace po = boost::program_options;
@@ -9,21 +10,25 @@ namespace po = boost::program_options;
 namespace ql::parser {
     class Parser {
     private:
-        using nodeFactory = std::function<std::shared_ptr<AbstractNode>(std::string&&, std::vector<std::string>&&, AbstractNode::ParentRef)>;
+        using NodeFactory = std::function<std::shared_ptr<ParseNode>(std::string&&, std::string_view const&, std::vector<std::string>&&,
+                                                                     AbstractNode::ParentRef)>;
 
-        std::map<std::string, nodeFactory> m_NamesToNodes;
+        std::map<std::string, NodeFactory> m_NamesToNodes;
 
         template<typename TNode>
         void registerNode(std::string_view nodeName) {
-            m_NamesToNodes.emplace(nodeName, [](auto name, auto tokens, auto parent) {
-                return std::make_shared<TNode>(std::move(name), std::move(tokens), parent);
+            // TODO use forwarding?
+            m_NamesToNodes.emplace(nodeName, [](std::string&& block, std::string_view const& body, std::vector<std::string>&& tokens,
+                                                AbstractNode::ParentRef parent) {
+                return std::make_shared<TNode>(std::move(block), body, std::move(tokens), parent);
             });
         }
 
-        std::shared_ptr<AbstractNode> getNode
-                (std::string const& nodeName, std::string&& blockWithInfo, std::vector<std::string>&& tokens, AbstractNode::ParentRef parent);
+        std::shared_ptr<AbstractNode> getNode(std::string const& nodeName,
+                                              std::string&& blockWithInfo, std::string_view const& innerBlock, std::vector<std::string>&& tokens,
+                                              AbstractNode::ParentRef parent);
 
-        void recurseNodes(std::string const& code, std::weak_ptr<AbstractNode> const& parent, int depth = 0);
+        void recurseNodes(std::string_view code, std::weak_ptr<AbstractNode> const& parent, int depth = 0);
 
     public:
         Parser();

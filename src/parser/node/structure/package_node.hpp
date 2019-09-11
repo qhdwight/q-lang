@@ -1,6 +1,6 @@
 #pragma once
 
-#include "parse_node.hpp"
+#include "parser/node/parse_node.hpp"
 
 namespace ql::parser {
     class PackageNode : public ParseNode {
@@ -9,6 +9,6 @@ namespace ql::parser {
     public:
         using ParseNode::ParseNode;
 
-        void parse(std::string const& text, std::vector<std::string> const& tokens) override;
+        void parse() override;
     };
 }

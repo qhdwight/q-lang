@@ -9,7 +9,7 @@ namespace ql::parser {
     public:
         typedef std::vector<std::shared_ptr<AbstractNode>> ChildrenRef;
         typedef std::weak_ptr<AbstractNode> ParentRef;
-    private:
+    protected:
         ChildrenRef m_Children;
         ParentRef m_Parent;
     public:
