@@ -1,6 +1,7 @@
 #include "parser.hpp"
 
 #include <utility>
+#include <iomanip>
 #include <iostream>
 
 #include <boost/algorithm/string/split.hpp>
@@ -73,7 +74,7 @@ namespace ql::parser {
                     boost::trim_all_if(tokens, [](auto const& token) { return token.empty(); });
 
                     std::string const& nodeName = tokens[0ul]; // TODO do more checks as opposed to just taking first
-                    std::cout << nodeName << " --> " << blockWithInfo << FBLU("#") << std::endl;
+                    std::cout << KGRN << std::setw(7) << nodeName << RST << " → " << blockWithInfo << FBLU("#") << std::endl;
 
                     // Find inner block
                     auto blockContentStart = blockStart, blockContentSize = i - blockContentStart;
