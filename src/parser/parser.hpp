@@ -19,7 +19,9 @@ namespace ql::parser {
         void registerNode(std::string_view nodeName) {
             // TODO use forwarding?
             m_NamesToNodes.emplace(nodeName, [](auto&& block, auto const& body, auto&& tokens, auto parent) {
-                return std::make_shared<TNode>(std::forward<decltype(block)>(block), body, std::forward<decltype(tokens)>(tokens), parent);
+                auto node = std::make_shared<TNode>(std::forward<decltype(block)>(block), body, std::forward<decltype(tokens)>(tokens), parent);
+                node->parse();
+                return node;
             });
         }
 

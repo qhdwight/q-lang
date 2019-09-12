@@ -37,11 +37,11 @@ namespace ql::parser {
     std::shared_ptr<AbstractNode> Parser::getNode(std::string const& nodeName,
                                                   std::string&& blockWithInfo, std::string_view const& innerBlock, std::vector<std::string>&& tokens,
                                                   AbstractNode::ParentRef parent) {
-        // Check if we have a generator function that can make this requested time, or else use default
+        // Check if we have a generator function that can make this requested node, or else use default
         auto it = m_NamesToNodes.find(nodeName);
         NodeFactory& nodeFactoryFunc = it == m_NamesToNodes.end() ? m_NamesToNodes["default"] : it->second;
+        // Give ownership of copied code slice to this node. View of inner block still references original memory since we move it instead of copying
         auto node = nodeFactoryFunc(std::move(blockWithInfo), innerBlock, std::move(tokens), std::move(parent));
-        node->parse();
         return node;
     }
 

@@ -4,6 +4,7 @@
 #include <boost/algorithm/string/trim_all.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
+#include <util/terminal_color.hpp>
 #include <parser/node/implementation/line_node.hpp>
 
 #include "impl_func_node.hpp"
@@ -16,7 +17,7 @@ namespace ql::parser {
         // Remove first and last blank tokens if they exist
         boost::trim_all_if(lines, [](auto const& token) { return token.empty(); });
         for (auto line: lines) {
-            std::cout << line << std::endl;
+            std::cout << KCYN << line << RST << std::endl;
             std::vector<std::string> tokens;
             boost::split(tokens, line, boost::is_any_of("\t "), boost::token_compress_on);
             boost::trim_all_if(tokens, [](auto const& token) { return token.empty(); });
