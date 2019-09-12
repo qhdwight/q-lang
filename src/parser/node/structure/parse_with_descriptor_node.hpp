@@ -7,7 +7,7 @@ namespace ql::parser {
     protected:
         std::string_view m_InnerBody;
     public:
-        ParseWithDescriptorNode(std::string&& body, std::string_view const& innerBody, std::vector<std::string>&& tokens, ParentRef const& parent)
+        ParseWithDescriptorNode(std::string&& body, std::string_view const& innerBody, Tokens&& tokens, ParentRef const& parent)
                 : ParseNode(std::move(body), std::move(tokens), parent), m_InnerBody(innerBody) {
         }
     };

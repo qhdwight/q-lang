@@ -3,12 +3,14 @@
 #include <parser/node/abstract_node.hpp>
 
 namespace ql::parser {
+    typedef std::vector<std::string> Tokens;
+
     class ParseNode : public AbstractNode {
     protected:
         std::string m_Body;
-        std::vector<std::string> m_Tokens;
+        Tokens m_Tokens;
     public:
-        ParseNode(std::string&& body, std::vector<std::string>&& tokens, ParentRef const& parent)
+        ParseNode(std::string&& body, Tokens&& tokens, ParentRef const& parent)
                 : AbstractNode(parent), m_Body(body), m_Tokens(tokens) {
         };
 

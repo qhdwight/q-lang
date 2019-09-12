@@ -10,7 +10,7 @@ namespace po = boost::program_options;
 namespace ql::parser {
     class Parser {
     private:
-        using NodeFactory = std::function<std::shared_ptr<ParseWithDescriptorNode>(std::string&&, std::string_view const&, std::vector<std::string>&&,
+        using NodeFactory = std::function<std::shared_ptr<ParseWithDescriptorNode>(std::string&&, std::string_view const&, Tokens&&,
                                                                                    AbstractNode::ParentRef)>;
 
         std::map<std::string, NodeFactory> m_NamesToNodes;
@@ -26,7 +26,7 @@ namespace ql::parser {
         }
 
         std::shared_ptr<AbstractNode> getNode(std::string const& nodeName,
-                                              std::string&& blockWithInfo, std::string_view const& innerBlock, std::vector<std::string>&& tokens,
+                                              std::string&& blockWithInfo, std::string_view const& innerBlock, Tokens&& tokens,
                                               AbstractNode::ParentRef parent);
 
         void recurseNodes(std::string_view code, std::weak_ptr<AbstractNode> const& parent, int depth = 0);

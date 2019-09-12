@@ -26,7 +26,7 @@ namespace ql::parser {
     }
 
     std::shared_ptr<MasterNode> Parser::parse(po::variables_map& options) {
-        auto sources = options["input"].as<std::vector<std::string>>();
+        auto sources = options["input"].as<Tokens>();
         std::string sourceFileName = sources[0];
         std::cout << sourceFileName << std::endl;
         auto src = util::readAllText(sourceFileName);
@@ -35,7 +35,7 @@ namespace ql::parser {
     }
 
     std::shared_ptr<AbstractNode> Parser::getNode(std::string const& nodeName,
-                                                  std::string&& blockWithInfo, std::string_view const& innerBlock, std::vector<std::string>&& tokens,
+                                                  std::string&& blockWithInfo, std::string_view const& innerBlock, Tokens&& tokens,
                                                   AbstractNode::ParentRef parent) {
         // Check if we have a generator function that can make this requested node, or else use default
         auto it = m_NamesToNodes.find(nodeName);
@@ -67,7 +67,7 @@ namespace ql::parser {
                     std::string blockWithInfo(code.substr(blockInfoStart, blockInfoSize));
 
                     // Split by tabs and spaces into tokens, which we use to find what type of node to create
-                    std::vector<std::string> tokens;
+                    Tokens tokens;
                     auto deliminator = boost::is_any_of("\t ");
                     boost::split(tokens, blockWithInfo, deliminator, boost::token_compress_on);
                     // Remove first and last blank tokens if they exist
