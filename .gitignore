@@ -71,3 +71,6 @@ boost*/
 
 build/*
 !build/build.ninja
+!build/rules.ninja
+
+*.stackdump

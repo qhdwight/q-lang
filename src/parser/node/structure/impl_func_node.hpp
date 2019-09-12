@@ -1,11 +1,11 @@
 #pragma once
 
-#include <parser/node/parse_node.hpp>
+#include <parser/node/structure/parse_with_descriptor_node.hpp>
 
 namespace ql::parser {
-    class ImplementFunctionNode : public ParseNode {
+    class ImplementFunctionNode : public ParseWithDescriptorNode {
     public:
-        using ParseNode::ParseNode;
+        using ParseWithDescriptorNode::ParseWithDescriptorNode;
 
         void parse() override;
     };

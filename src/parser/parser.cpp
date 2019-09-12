@@ -11,6 +11,7 @@
 #include <boost/algorithm/string/classification.hpp>
 
 #include <util/read.hpp>
+#include <util/terminal_color.hpp>
 #include <parser/node/structure/package_node.hpp>
 #include <parser/node/structure/def_func_node.hpp>
 #include <parser/node/structure/impl_func_node.hpp>
@@ -18,9 +19,9 @@
 namespace ql::parser {
     Parser::Parser() {
         registerNode<PackageNode>("pckg");
-        registerNode<ParseNode>("default");
         registerNode<DefineFunctionNode>("def");
         registerNode<ImplementFunctionNode>("impl");
+        registerNode<ParseWithDescriptorNode>("default");
     }
 
     std::shared_ptr<MasterNode> Parser::parse(po::variables_map& options) {
@@ -72,12 +73,12 @@ namespace ql::parser {
                     boost::trim_all_if(tokens, [](auto const& token) { return token.empty(); });
 
                     std::string const& nodeName = tokens[0ul]; // TODO do more checks as opposed to just taking first
-                    std::cout << nodeName << " --> " << blockWithInfo << "#" << std::endl;
+                    std::cout << nodeName << " --> " << blockWithInfo << FBLU("#") << std::endl;
 
                     // Find inner block
                     auto blockContentStart = blockStart, blockContentSize = i - blockContentStart;
                     std::string_view blockContents = std::string_view(blockWithInfo).substr(blockContentStart - blockInfoStart, blockContentSize);
-                    std::cout << blockContents << "#" << std::endl;
+                    std::cout << blockContents << FRED("$") << std::endl;
                     auto child = getNode(nodeName, std::move(blockWithInfo), blockContents, std::move(tokens), parent);
                     // Add children to parent node, parent node is owning via a shared pointer
                     parent.lock()->addChild(child);

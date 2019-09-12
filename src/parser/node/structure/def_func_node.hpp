@@ -1,10 +1,10 @@
 #pragma once
 
-#include "parser/node/parse_node.hpp"
+#include <parser/node/structure/parse_with_descriptor_node.hpp>
 
 namespace ql::parser {
-    class DefineFunctionNode : public ParseNode {
+    class DefineFunctionNode : public ParseWithDescriptorNode {
     public:
-        using ParseNode::ParseNode;
+        using ParseWithDescriptorNode::ParseWithDescriptorNode;
     };
 }

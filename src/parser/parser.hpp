@@ -2,16 +2,16 @@
 
 #include <boost/program_options/variables_map.hpp>
 
-#include <parser/node/parse_node.hpp>
 #include <parser/node/master_node.hpp>
+#include <parser/node/structure/parse_with_descriptor_node.hpp>
 
 namespace po = boost::program_options;
 
 namespace ql::parser {
     class Parser {
     private:
-        using NodeFactory = std::function<std::shared_ptr<ParseNode>(std::string&&, std::string_view const&, std::vector<std::string>&&,
-                                                                     AbstractNode::ParentRef)>;
+        using NodeFactory = std::function<std::shared_ptr<ParseWithDescriptorNode>(std::string&&, std::string_view const&, std::vector<std::string>&&,
+                                                                                   AbstractNode::ParentRef)>;
 
         std::map<std::string, NodeFactory> m_NamesToNodes;
 

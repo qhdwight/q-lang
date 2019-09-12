@@ -5,7 +5,7 @@
 #include <utility>
 
 namespace ql::parser {
-    class AbstractNode {
+    class AbstractNode : protected std::enable_shared_from_this<AbstractNode> {
     public:
         typedef std::vector<std::shared_ptr<AbstractNode>> ChildrenRef;
         typedef std::weak_ptr<AbstractNode> ParentRef;
