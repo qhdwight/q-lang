@@ -28,7 +28,7 @@ namespace ql::parser {
     std::shared_ptr<MasterNode> Parser::parse(po::variables_map& options) {
         auto sources = options["input"].as<Tokens>();
         std::string sourceFileName = sources[0];
-        std::cout << sourceFileName << std::endl;
+        std::cout << "Using source Q-Lang file: " << sourceFileName << std::endl;
         auto src = util::readAllText(sourceFileName);
         auto node = getNodes(src.value());
         return node;

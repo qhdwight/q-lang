@@ -1,6 +1,5 @@
-#include <cstdio>
-
 int main() {
-    puts("Hello World!");
+    int x = 3;
+    int y = 4;
     return 7;
 }

@@ -1,12 +1,12 @@
 pckg main {
-    def void -> int {
+    def void -> int32 {
         impl main {
             int32 x = 2;
             int32 y = x + 6;
             out y + x;
         }
     }
-    def int, int -> int {
+    def int32, int32 -> int {
         impl calc(a, b) {
             out a + b;
         }

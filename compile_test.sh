@@ -1,0 +1,1 @@
+g++ testing.cpp -S -fno-asynchronous-unwind-tables -fno-exceptions -fno-rtti -fverbose-asm -masm=intel
