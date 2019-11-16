@@ -1,8 +1,11 @@
 #include <iostream>
 
+void bet() {
+
+}
+
 int main() {
-  const char* message = "Hello World!";
-  std::puts(message);
+  bet();
 }
 
 

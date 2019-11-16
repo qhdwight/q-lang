@@ -1,5 +1,0 @@
-r
-di -n main
-fr v -a
-s
-register read

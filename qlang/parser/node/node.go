@@ -15,12 +15,17 @@ type Node interface {
 type CodeNode interface {
 	Node
 	Parse()
+	Generate()
 }
 
 type BaseNode struct {
 	Node
 	children []Node
 	Parent   Node
+}
+
+func (node *BaseNode) Generate() {
+
 }
 
 func (node *BaseNode) Parse() {
@@ -35,10 +40,6 @@ type ProgramNode struct {
 	Base BaseNode
 }
 
-func (node *ProgramNode) Add(child Node) {
-	node.Base.Add(child)
-}
-
 type PackageNode struct {
 	CodeNode
 	parseNode ParseNode
@@ -47,17 +48,9 @@ type PackageNode struct {
 func (node *PackageNode) Parse() {
 }
 
-func (node *PackageNode) Add(child Node) {
-	node.parseNode.base.Add(child)
-}
-
 type DefineFunctionNode struct {
 	CodeNode
 	parseNode ParseNode
-}
-
-func (node *DefineFunctionNode) Add(child Node) {
-	node.parseNode.base.Add(child)
 }
 
 func (node *DefineFunctionNode) Parse() {
@@ -66,10 +59,6 @@ func (node *DefineFunctionNode) Parse() {
 type ImplementFunctionNode struct {
 	CodeNode
 	parseNode ParseNode
-}
-
-func (node *ImplementFunctionNode) Add(child Node) {
-	node.parseNode.base.Add(child)
 }
 
 func (node *ImplementFunctionNode) Parse() {
