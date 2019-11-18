@@ -1,4 +1,4 @@
-#include <iostream>
+const int j = 3;
 
 void bet() {
 
@@ -6,6 +6,7 @@ void bet() {
 
 int main() {
   bet();
+  int i = 3 + j;
 }
 
 

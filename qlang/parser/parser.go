@@ -23,7 +23,7 @@ func getProgram(code string) *node.ProgramNode {
 	return program
 }
 
-func recurseNodes(code string, parent node.CodeNode, depth int) {
+func recurseNodes(code string, parent node.Node, depth int) {
 	level, blockInfoStart, blockStart := 0, 0, 0
 	for i := 0; i < len(code); i++ {
 		c := code[i]
@@ -35,7 +35,7 @@ func recurseNodes(code string, parent node.CodeNode, depth int) {
 		} else if c == '}' {
 			level--
 			if level == 0 {
-				blockWithInfo := code[blockInfoStart:i]
+				blockWithInfo := code[blockInfoStart : i+1]
 				blockWithInfo = strings.TrimSpace(blockWithInfo)
 				tokens := strings.FieldsFunc(blockWithInfo, func(c rune) bool {
 					return c == ' '
@@ -43,11 +43,15 @@ func recurseNodes(code string, parent node.CodeNode, depth int) {
 				nodeName := tokens[0]
 				blockContentStart := blockStart
 				fmt.Println(nodeName)
-				child := node.Factory[nodeName]()
-				child.Parse()
-				parent.Add(child)
-				recurseNodes(code[blockContentStart:i], child, depth+1)
-				blockInfoStart = i + 1
+				blockContents := code[blockContentStart-blockInfoStart : i]
+				nodeFunc, exists := node.Factory[nodeName]
+				if exists {
+					child := nodeFunc()
+					child.Parse(blockWithInfo, blockContents, tokens, parent)
+					parent.Add(child)
+					recurseNodes(code[blockContentStart:i], child, depth+1)
+					blockInfoStart = i + 1
+				}
 			}
 		}
 	}
