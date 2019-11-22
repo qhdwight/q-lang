@@ -4,7 +4,7 @@ pkg main {
             i32 {
               x = 2;
               y = x + 6
-            } 
+            }
         }
     }
     def i32, i32 -> i32 {

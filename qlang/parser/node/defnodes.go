@@ -3,13 +3,15 @@ package node
 var (
 	Factory = map[string]func() ParsableNode{
 		"pkg": func() ParsableNode { return new(PackageNode) },
-		"def": func() ParsableNode { return new(DefineFunctionNode) },
-		"imp": func() ParsableNode { return new(ImplementFunctionNode) },
+		"def": func() ParsableNode { return new(DefineFuncNode) },
+		"imp": func() ParsableNode { return new(ImplFuncNode) },
+		"i32": func() ParsableNode { return new(IntNode) },
 	}
 )
 
 type Node interface {
 	Add(child Node)
+	SetParent(parent Node)
 }
 
 type ParsableNode interface {
@@ -18,8 +20,11 @@ type ParsableNode interface {
 	Generate()
 }
 
+type DeclarationNode interface {
+	ParsableNode
+}
+
 type BaseNode struct {
-	Node
 	children []Node
 	Parent   Node
 }
@@ -28,34 +33,31 @@ func (node *BaseNode) Add(child Node) {
 	node.children = append(node.children, child)
 }
 
+func (node *BaseNode) SetParent(parent Node) {
+	node.Parent = parent
+}
+
 type ProgramNode struct {
-	ParsableNode
-	Base      BaseNode
+	ParseNode
 	Constants map[string]Constant
 }
 
 type PackageNode struct {
-	ParsableNode
-	parseNode ParseNode
-}
-
-func (node *PackageNode) Add(child Node) {
-	node.parseNode.base.Add(child)
-}
-
-func (node *PackageNode) Parse(body, innerBody string, tokens []string, parent Node) {
-	node.parseNode.Parse(body, innerBody, tokens, parent)
+	ParseNode
 }
 
 type ParseNode struct {
-	ParsableNode
-	base            BaseNode
+	BaseNode
 	body, innerBody string
 	tokens          []string
 }
 
+func (node *ParseNode) Generate() {
+	panic("implement me")
+}
+
 func (node *ParseNode) Parse(body, innerBody string, tokens []string, parent Node) {
-	node.base.Parent = parent
+	node.SetParent(parent)
 	node.body = body
 	node.innerBody = innerBody
 	node.tokens = tokens
