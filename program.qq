@@ -3,8 +3,9 @@ pkg main {
         imp main {
             i32 {
               x = 2;
-              y = x + 6
+              y = x + 6;
             }
+            out x + y;
         }
     }
     def i32, i32 -> i32 {

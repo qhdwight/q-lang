@@ -1,11 +1,11 @@
 const int j = 3;
 
-void bet() {
+void myfunc() {
 
 }
 
 int main() {
-  bet();
+  myfunc();
   int i = 3 + j;
 }
 

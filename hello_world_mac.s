@@ -12,7 +12,7 @@ _main:
 	xor rcx, rcx
 	lea	rax, [rip + _message]
 	mov rsi, rax # Pointer to string
-	mov rdx, 14 # Size
+	mov rdx, 13 # Size
 	mov rax, 0x2000004 # Write
 	mov rdi, 1 # Standard output
 	syscall

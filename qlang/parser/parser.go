@@ -36,10 +36,8 @@ func recurseNodes(code string, parent node.Node, depth int) {
 			level--
 			if level == 0 {
 				blockWithInfo := code[blockInfoStart : i+1]
-				blockWithInfo = strings.TrimSpace(blockWithInfo)
-				tokens := strings.FieldsFunc(blockWithInfo, func(c rune) bool {
-					return c == ' '
-				})
+				//blockWithInfo = strings.TrimSpace(blockWithInfo)
+				tokens := strings.Fields(blockWithInfo)
 				nodeName := tokens[0]
 				fmt.Println(nodeName)
 				blockContentStart := blockStart
