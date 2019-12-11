@@ -1,11 +1,16 @@
 package node
 
+import (
+	"fmt"
+	"q-lang-go/parser/util"
+)
+
 var (
-	Factory = map[string]func() ParsableNode{
-		"pkg": func() ParsableNode { return new(PackageNode) },
-		"def": func() ParsableNode { return new(DefineFuncNode) },
-		"imp": func() ParsableNode { return new(ImplFuncNode) },
-		"i32": func() ParsableNode { return new(IntNode) },
+	Factory = map[string]func() ParsableBlockNode{
+		"pkg": func() ParsableBlockNode { return new(PackageNode) },
+		"def": func() ParsableBlockNode { return new(DefineFuncNode) },
+		"imp": func() ParsableBlockNode { return new(ImplFuncNode) },
+		"i32": func() ParsableBlockNode { return new(IntNode) },
 	}
 )
 
@@ -14,14 +19,10 @@ type Node interface {
 	SetParent(parent Node)
 }
 
-type ParsableNode interface {
+type ParsableBlockNode interface {
 	Node
-	Parse(body, innerBody string, tokens []string, parent Node)
+	Parse(scanner *util.Scanner)
 	Generate()
-}
-
-type DeclarationNode interface {
-	ParsableNode
 }
 
 type BaseNode struct {
@@ -38,27 +39,44 @@ func (node *BaseNode) SetParent(parent Node) {
 }
 
 type ProgramNode struct {
-	ParseNode
-	Constants map[string]Constant
+	ParseBlockNode
+	Constants   map[string]Constant
+	packageName string
 }
 
 type PackageNode struct {
-	ParseNode
+	ParseBlockNode
 }
 
-type ParseNode struct {
+type ParseBlockNode struct {
 	BaseNode
-	body, innerBody string
-	tokens          []string
 }
 
-func (node *ParseNode) Generate() {
+func (node ParseBlockNode) Generate() {
 	panic("implement me")
 }
 
-func (node *ParseNode) Parse(body, innerBody string, tokens []string, parent Node) {
-	node.SetParent(parent)
-	node.body = body
-	node.innerBody = innerBody
-	node.tokens = tokens
+func (node *ProgramNode) Parse(scanner *util.Scanner) {
+	nodeName := scanner.Next(util.Split)
+	if nodeName != "pkg" {
+		panic("Expected package first!")
+	}
+	node.packageName = scanner.Next(util.Split)
+	fmt.Println("Package name: ", node.packageName)
+	if scanner.Next(util.Split) == "{" {
+		nodeName = scanner.Next(util.Split)
+		childNode := Factory[nodeName]()
+		childNode.Parse(scanner)
+		node.Add(childNode)
+		childNode.SetParent(node)
+	}
+}
+
+func (node *ParseBlockNode) Parse(scanner *util.Scanner) {
+	nodeName := scanner.Next(util.Split)
+	fmt.Println(nodeName)
+	childNode := Factory[nodeName]()
+	childNode.Parse(scanner)
+	node.Add(childNode)
+	childNode.SetParent(node)
 }
