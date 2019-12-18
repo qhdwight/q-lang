@@ -41,6 +41,12 @@ func (node *ImplFuncNode) Parse(scanner *util.Scanner) {
 	fmt.Println("Func name: ", funcName)
 }
 
+func (node *ImplFuncNode) Generate() string {
+	return `_main:
+	push rbp
+	mov	rbp, rsp`
+}
+
 func (node *BaseNode) parseNextChild(nextToken string, scanner *util.Scanner) {
 	if nodeFunc, isNode := Factory[nextToken]; isNode {
 		childNode := nodeFunc()
@@ -55,4 +61,3 @@ func (node *BaseNode) parseAndAdd(childNode ParsableBlockNode, scanner *util.Sca
 	childNode.SetParent(node)
 	node.Add(childNode)
 }
-

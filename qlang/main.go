@@ -2,6 +2,9 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"io/ioutil"
+	"os/exec"
 	"q-lang-go/parser"
 )
 
@@ -11,5 +14,25 @@ func main() {
 	if *inputFiles == "" {
 		panic("No input Q files provided!")
 	}
-	parser.Parse(*inputFiles)
+	program := parser.Parse(*inputFiles)
+
+	assembly := program.Generate()
+	fmt.Println("Output assembly:", assembly)
+
+	// TODO currently we write to file first and then call GCC. Find a way to pass it without file as we don't really want to touch the filesystem
+	err := ioutil.WriteFile("program.s", []byte(assembly), 0644)
+	if err != nil {
+		panic(err)
+	}
+
+	command := exec.Command("gcc", "program.s", "-o", "program")
+	fmt.Println("Running command:", command.String())
+	// Run GCC to create native binary from assembly code
+	// We want combined output since it shows standard output and error.
+	// If GCC fails to compile the assembly, it will show us why
+	output, err := command.CombinedOutput()
+	if err != nil {
+		fmt.Println("Error running command:", string(output))
+		panic(err)
+	}
 }

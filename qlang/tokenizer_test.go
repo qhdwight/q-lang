@@ -7,7 +7,7 @@ import (
 )
 
 func TestTokenizer(t *testing.T) {
-	scanner := util.NewScanner("  a program  {qlang()&&b } ")
+	scanner := util.NewScanner("  a program  {qlang()&&||b } ")
 	if scanner.Next(node.Split) != "a" {
 		t.Error()
 	}
@@ -27,6 +27,9 @@ func TestTokenizer(t *testing.T) {
 		t.Error()
 	}
 	if scanner.Next(node.Split) != "&&" {
+		t.Error()
+	}
+	if scanner.Next(node.Split) != "||" {
 		t.Error()
 	}
 	if scanner.Next(node.Split) != "b" {

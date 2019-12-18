@@ -8,24 +8,27 @@ import (
 )
 
 var (
+	// Allows us to take q-lang code, which is raw text, and convert it into Go structs
 	Factory = map[string]func() ParsableBlockNode{
 		"pkg": func() ParsableBlockNode { return new(PackageNode) },
 		"def": func() ParsableBlockNode { return new(DefineFuncNode) },
 		"imp": func() ParsableBlockNode { return new(ImplFuncNode) },
 		"i32": func() ParsableBlockNode { return new(IntNode) },
 	}
-	tokens = []string{";", ",", "&&", "||", "{", "}", "(", ")"}
+	// TODO operators are defined in two locations. Add better system for managing tokens
+	tokens = []string{";", ",", "&&", "||", "{", "}", "(", ")", "->", "+", "-", "*", "/"}
 )
 
 type Node interface {
 	Add(child Node)
+	GetChildren() []Node
 	SetParent(parent Node)
+	Generate() string // Create assembly string
 }
 
 type ParsableBlockNode interface {
 	Node
 	Parse(scanner *util.Scanner)
-	Generate()
 }
 
 type BaseNode struct {
@@ -37,13 +40,17 @@ func (node *BaseNode) Add(child Node) {
 	node.children = append(node.children, child)
 }
 
+func (node *BaseNode) GetChildren() []Node {
+	return node.children
+}
+
 func (node *BaseNode) SetParent(parent Node) {
 	node.Parent = parent
 }
 
 type ProgramNode struct {
 	ParseBlockNode
-	Constants   map[string]Constant
+	constants   map[string]Constant
 	packageName string
 }
 
@@ -55,8 +62,27 @@ type ParseBlockNode struct {
 	BaseNode
 }
 
-func (node ParseBlockNode) Generate() {
-	panic("implement me")
+func (node *BaseNode) Generate() string {
+	return ""
+}
+
+func (node *ProgramNode) Generate() string {
+	assembly := `.data
+_message:
+	.string "Hello World!\n"
+
+.text
+.intel_syntax noprefix
+.globl	_main`
+	children := node.children
+	for {
+		assembly += children[0].Generate() + "\n"
+		children = children[0].GetChildren()
+		if children == nil {
+			break
+		}
+	}
+	return assembly
 }
 
 func (node *ProgramNode) Parse(scanner *util.Scanner) {

@@ -5,6 +5,15 @@ import (
 	"q-lang-go/parser/util"
 )
 
+var (
+	OperatorFactory = map[string]func() OperableNode{
+		"+": func() OperableNode { return new(AdditionNode) },
+		"-": func() OperableNode { return new(AdditionNode) },
+		"*": func() OperableNode { return new(AdditionNode) },
+		"/": func() OperableNode { return new(AdditionNode) },
+	}
+)
+
 type IntNode struct {
 	DefVarNode
 }
@@ -17,32 +26,55 @@ type DefVarNode struct {
 	ParseBlockNode
 }
 
-func (node *IntNode) Parse(scanner *util.Scanner) {
-
+type OperandNode struct {
+	BaseNode
 }
 
-func (node *DefVarNode) Parse(scanner *util.Scanner) {
+type OperatorNode struct {
+	BaseNode
+}
+
+type AdditionNode struct {
+	OperatorNode
+}
+
+type OperableNode interface {
+	Node
+}
+
+func (node *IntNode) Parse(scanner *util.Scanner) {
 	if scanner.Next(Split) != "{" {
 		panic("Expected block for variable declaration!")
 	}
 	for {
-		name := scanner.Next(Split)
+		nextToken := scanner.Next(Split)
+		if nextToken == "}" {
+			break
+		}
+		name := nextToken
 		if scanner.Next(Split) != "=" {
 			panic("Expected assignment!")
 		}
-		value := scanner.Next(Split)
-		if scanner.Next(Split) != ";" {
-			panic("Expected semicolon in variable definition!")
-		}
-		fmt.Println("Variable named:", name, "with value:", value)
-		if nodeFunc, isNode := Factory[name]; isNode {
-			childNode := nodeFunc()
-			childNode.Parse(scanner)
+		for {
+			nextToken = scanner.Next(Split)
+			if nextToken == ";" {
+				break
+			}
+			value := nextToken
+			var childNode Node
+			// TODO post-processing needs to be done on nodes to make a tree which can be systematically simplified
+			if operatorFunc, isOperator := OperatorFactory[value]; isOperator {
+				childNode = operatorFunc()
+			} else {
+				childNode = new(OperandNode)
+			}
 			childNode.SetParent(node)
 			node.Add(childNode)
-		}
-		if scanner.Next(Split) == "}" {
-			break
+			fmt.Println("Variable node:", name, "with value:", value)
 		}
 	}
+}
+
+func (node *DefVarNode) Parse(scanner *util.Scanner) {
+
 }

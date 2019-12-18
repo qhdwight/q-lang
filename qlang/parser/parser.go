@@ -7,13 +7,13 @@ import (
 	"strings"
 )
 
-func Parse(fileName string) {
+func Parse(fileName string) *node.ProgramNode {
 	bytes, err := ioutil.ReadFile(fileName)
 	if err != nil {
 		panic(err)
 	}
 	code := string(bytes)
-	getProgram(code)
+	return getProgram(code)
 }
 
 func getProgram(code string) *node.ProgramNode {
