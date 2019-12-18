@@ -3,6 +3,8 @@ package node
 import (
 	"fmt"
 	"q-lang-go/parser/util"
+	"strings"
+	"unicode"
 )
 
 var (
@@ -12,6 +14,7 @@ var (
 		"imp": func() ParsableBlockNode { return new(ImplFuncNode) },
 		"i32": func() ParsableBlockNode { return new(IntNode) },
 	}
+	tokens = []string{";", ",", "&&", "||", "{", "}", "(", ")"}
 )
 
 type Node interface {
@@ -57,26 +60,53 @@ func (node ParseBlockNode) Generate() {
 }
 
 func (node *ProgramNode) Parse(scanner *util.Scanner) {
-	nodeName := scanner.Next(util.Split)
+	nodeName := scanner.Next(Split)
 	if nodeName != "pkg" {
 		panic("Expected package first!")
 	}
-	node.packageName = scanner.Next(util.Split)
-	fmt.Println("Package name: ", node.packageName)
-	if scanner.Next(util.Split) == "{" {
-		nodeName = scanner.Next(util.Split)
-		childNode := Factory[nodeName]()
-		childNode.Parse(scanner)
-		node.Add(childNode)
-		childNode.SetParent(node)
+	node.packageName = scanner.Next(Split)
+	fmt.Println("Package name:", node.packageName)
+	if scanner.Next(Split) != "{" {
+		panic("Expected block for package!")
 	}
+	nodeName = scanner.Next(Split)
+	childNode := Factory[nodeName]()
+	node.parseAndAdd(childNode, scanner)
 }
 
 func (node *ParseBlockNode) Parse(scanner *util.Scanner) {
-	nodeName := scanner.Next(util.Split)
+	nodeName := scanner.Next(Split)
 	fmt.Println(nodeName)
-	childNode := Factory[nodeName]()
-	childNode.Parse(scanner)
-	node.Add(childNode)
-	childNode.SetParent(node)
+	node.parseNextChild(nodeName, scanner)
+}
+
+func Split(rest string) (string, int) {
+	// Cut out all spaces in the beginning
+	blankLength := 0
+	for ; blankLength < len(rest); blankLength++ {
+		if !unicode.IsSpace(rune(rest[blankLength])) {
+			break
+		}
+	}
+	word := rest[blankLength:]
+	// If we start with a token, extract it
+	for _, token := range tokens {
+		if strings.HasPrefix(word, token) {
+			return token, len(token) + blankLength
+		}
+	}
+	wordLength := 0
+	// Extend word until we find a space or a token
+findEnd:
+	for ; wordLength < len(word); wordLength++ {
+		if unicode.IsSpace(rune(word[wordLength])) {
+			break
+		}
+		for _, token := range tokens {
+			if strings.HasPrefix(word[wordLength:], token) {
+				break findEnd
+			}
+		}
+	}
+	return word[:wordLength], blankLength + wordLength
 }

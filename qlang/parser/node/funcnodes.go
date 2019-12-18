@@ -14,29 +14,45 @@ type ImplFuncNode struct {
 }
 
 func (node *DefineFuncNode) Parse(scanner *util.Scanner) {
-	parameterType := scanner.Next(util.Split)
-	if scanner.Next(util.Split) != "->" {
+	parameterType := scanner.Next(Split)
+	if scanner.Next(Split) != "->" {
 		panic("Expected return type!")
 	}
-	fmt.Println("Parameter type: ", parameterType)
-	returnType := scanner.Next(util.Split)
-	if scanner.Next(util.Split) != "{" {
-		panic("Expected block!")
+	fmt.Println("Parameter type:", parameterType)
+	returnType := scanner.Next(Split)
+	if scanner.Next(Split) != "{" {
+		panic("Expected body for function definition!")
 	}
-	fmt.Println("Return type: ", returnType)
-	if scanner.Next(util.Split) != "imp" {
+	fmt.Println("Return type:", returnType)
+	if scanner.Next(Split) != "imp" {
 		panic("Expected function implementation!")
 	}
 	implNode := new(ImplFuncNode)
-	implNode.Parse(scanner)
-	implNode.SetParent(node)
-	node.Add(implNode)
+	node.parseAndAdd(implNode, scanner)
 }
 
 func (node *ImplFuncNode) Parse(scanner *util.Scanner) {
-	funcName := scanner.Next(util.Split)
-	if scanner.Next(util.Split) != "{" {
-		return
+	funcName := scanner.Next(Split)
+	if scanner.Next(Split) != "{" {
+		panic("Expected block in function implementation!")
 	}
+	nextToken := scanner.Next(Split)
+	node.parseNextChild(nextToken, scanner)
 	fmt.Println("Func name: ", funcName)
 }
+
+func (node *BaseNode) parseNextChild(nextToken string, scanner *util.Scanner) {
+	if nodeFunc, isNode := Factory[nextToken]; isNode {
+		childNode := nodeFunc()
+		node.parseAndAdd(childNode, scanner)
+	} else {
+		panic("Unrecognized phrase")
+	}
+}
+
+func (node *BaseNode) parseAndAdd(childNode ParsableBlockNode, scanner *util.Scanner) {
+	childNode.Parse(scanner)
+	childNode.SetParent(node)
+	node.Add(childNode)
+}
+
