@@ -70,11 +70,11 @@ func (node *BaseNode) Generate(program *gen.Program) {
 }
 
 func (node *ProgramNode) Generate(program *gen.Program) {
-	program.ConstantsSection = &gen.Section{
-		Decorators: []string{".data"},
+	program.ConstSections = &gen.Section{
+		Decorators: []string{"data"},
 	}
 	program.FuncSection = &gen.Section{
-		Decorators: []string{".text", ".intel_syntax noprefix", ".globl _main"},
+		Decorators: []string{"text", "intel_syntax noprefix", "globl _main"},
 	}
 	node.BaseNode.Generate(program)
 }

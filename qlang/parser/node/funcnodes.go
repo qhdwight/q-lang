@@ -4,6 +4,11 @@ import (
 	"fmt"
 	"q-lang-go/parser/gen"
 	"q-lang-go/parser/util"
+	"strconv"
+)
+
+var (
+	labelNum = 0
 )
 
 type DefineFuncNode struct {
@@ -25,7 +30,7 @@ type ArgumentNode struct {
 
 type StringLiteralNode struct {
 	ParseNode
-	str string
+	str, label string
 }
 
 func (node *StringLiteralNode) Parse(scanner *util.Scanner) {
@@ -34,7 +39,14 @@ func (node *StringLiteralNode) Parse(scanner *util.Scanner) {
 }
 
 func (node *StringLiteralNode) Generate(program *gen.Program) {
-	program.CurrentSubSection.Content = append(program.CurrentSubSection.Content, `.string "`+node.str+`\n"`)
+	labelNum++
+	asmLabel := "string" + strconv.Itoa(labelNum)
+	node.label = asmLabel
+	msgSubSection := &gen.SubSection{
+		Name:    asmLabel,
+		Content: []string{`.string "` + node.str + `\n"`},
+	}
+	program.ConstSections.SubSections = append(program.ConstSections.SubSections, msgSubSection)
 }
 
 func (node *CallFuncNode) Parse(scanner *util.Scanner) {
@@ -51,22 +63,18 @@ func (node *CallFuncNode) Parse(scanner *util.Scanner) {
 
 func (node *CallFuncNode) Generate(program *gen.Program) {
 	if node.name == "pln" {
-		subSection := &gen.SubSection{
-			Name: "_message:",
-		}
 		funcSubSection := program.CurrentSubSection
-		program.ConstantsSection.SubSections = append(program.ConstantsSection.SubSections, subSection)
-		program.CurrentSubSection = subSection
-		node.children[0].Generate(program)
+		strNode := node.children[0].(*StringLiteralNode)
+		strNode.Generate(program)
 		funcSubSection.Content = append(funcSubSection.Content,
-			"lea rax, [rip + _message]",
+			"lea rax, [rip + _"+strNode.label+"]",
 			"mov rsi, rax # Pointer to string",
-			"mov rdx, 13 # Size",
+			"mov rdx, "+strconv.Itoa(len(strNode.str) + 1)+" # Size",
 			"mov rax, 0x2000004 # Write",
 			"mov rdi, 1 # Standard output",
 			"syscall",
 		)
-		//program.ConstantsSection.SubSections.
+		//program.ConstSections.SubSections.
 	}
 }
 
@@ -93,9 +101,14 @@ func (node *ImplFuncNode) Parse(scanner *util.Scanner) {
 	if scanner.Next(Split) != "{" {
 		panic("Expected block in function implementation!")
 	}
-	nextToken := scanner.Next(Split)
-	node.parseNextChild(nextToken, scanner)
-	fmt.Println("Func name:", funcName)
+	for {
+		nextToken := scanner.Next(Split)
+		if nextToken == "}" {
+			break
+		}
+		node.parseNextChild(nextToken, scanner)
+		fmt.Println("Func name:", funcName)
+	}
 }
 
 func (node *ImplFuncNode) Generate(program *gen.Program) {
@@ -103,9 +116,9 @@ func (node *ImplFuncNode) Generate(program *gen.Program) {
 		"push rbp",
 		"mov rbp, rsp",
 	}
-	funcSubSection := &gen.SubSection{Name: "_main:", Content: *content}
-	program.FuncSection.SubSections = append(program.FuncSection.SubSections, funcSubSection)
+	funcSubSection := &gen.SubSection{Name: "main", Content: *content}
 	program.CurrentSubSection = funcSubSection
+	program.FuncSection.SubSections = append(program.FuncSection.SubSections, funcSubSection)
 	for _, child := range node.children {
 		child.Generate(program)
 	}
@@ -119,9 +132,11 @@ func (node *BaseNode) parseNextChild(nextToken string, scanner *util.Scanner) {
 	if nodeFunc, isNode := Factory[nextToken]; isNode {
 		childNode := nodeFunc()
 		node.parseAndAdd(childNode, scanner)
+	} else if nextToken == "out" {
+
 	} else {
 		callNode := &CallFuncNode{name: nextToken}
-		fmt.Println("Calling Function:", callNode)
+		fmt.Println("Function Call:", callNode.name)
 		node.parseAndAdd(callNode, scanner)
 	}
 }

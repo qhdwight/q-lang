@@ -15,13 +15,13 @@ func main() {
 	if *inputFiles == "" {
 		panic("No input Q files provided!")
 	}
-	program := parser.Parse(*inputFiles)
+	prog := parser.Parse(*inputFiles)
 
-	assembly := new(gen.Program)
-	program.Generate(assembly)
-	fmt.Println("Output assembly:\n", assembly.ToString())
+	asm := new(gen.Program)
+	prog.Generate(asm)
+	fmt.Println("Output asm:\n", asm.ToString())
 
-	assemble(assembly)
+	assemble(asm)
 }
 
 func assemble(assembly *gen.Program) {
