@@ -2,15 +2,16 @@ package node
 
 import (
 	"fmt"
+	"q-lang-go/parser/gen"
 	"q-lang-go/parser/util"
 )
 
 var (
 	OperatorFactory = map[string]func() OperableNode{
 		"+": func() OperableNode { return new(AdditionNode) },
-		"-": func() OperableNode { return new(AdditionNode) },
-		"*": func() OperableNode { return new(AdditionNode) },
-		"/": func() OperableNode { return new(AdditionNode) },
+		"-": func() OperableNode { return new(SubtractionNode) },
+		"*": func() OperableNode { return new(MultiplicationNode) },
+		"/": func() OperableNode { return new(DivisionNode) },
 	}
 )
 
@@ -23,7 +24,7 @@ type ImplVarNode struct {
 }
 
 type DefVarNode struct {
-	ParseBlockNode
+	ParseNode
 }
 
 type OperandNode struct {
@@ -35,6 +36,18 @@ type OperatorNode struct {
 }
 
 type AdditionNode struct {
+	OperatorNode
+}
+
+type SubtractionNode struct {
+	OperatorNode
+}
+
+type MultiplicationNode struct {
+	OperatorNode
+}
+
+type DivisionNode struct {
 	OperatorNode
 }
 
@@ -77,4 +90,9 @@ func (node *IntNode) Parse(scanner *util.Scanner) {
 
 func (node *DefVarNode) Parse(scanner *util.Scanner) {
 
+}
+
+func (node *DefVarNode) Generate(program *gen.Program) {
+	//for _, s := range program.FuncSection.SubSections {
+	//}
 }

@@ -9,7 +9,6 @@ _main:
 	push rbp
 	mov	rbp, rsp
 
-	xor rcx, rcx
 	lea	rax, [rip + _message]
 	mov rsi, rax # Pointer to string
 	mov rdx, 13 # Size
@@ -20,4 +19,3 @@ _main:
 	mov	eax, 2
 	pop	rbp
 	ret
-

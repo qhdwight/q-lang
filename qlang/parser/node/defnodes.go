@@ -2,6 +2,7 @@ package node
 
 import (
 	"fmt"
+	"q-lang-go/parser/gen"
 	"q-lang-go/parser/util"
 	"strings"
 	"unicode"
@@ -9,24 +10,24 @@ import (
 
 var (
 	// Allows us to take q-lang code, which is raw text, and convert it into Go structs
-	Factory = map[string]func() ParsableBlockNode{
-		"pkg": func() ParsableBlockNode { return new(PackageNode) },
-		"def": func() ParsableBlockNode { return new(DefineFuncNode) },
-		"imp": func() ParsableBlockNode { return new(ImplFuncNode) },
-		"i32": func() ParsableBlockNode { return new(IntNode) },
+	Factory = map[string]func() ParsableNode{
+		"pkg": func() ParsableNode { return new(PackageNode) },
+		"def": func() ParsableNode { return new(DefineFuncNode) },
+		"imp": func() ParsableNode { return new(ImplFuncNode) },
+		"i32": func() ParsableNode { return new(IntNode) },
 	}
 	// TODO operators are defined in two locations. Add better system for managing tokens
-	tokens = []string{";", ",", "&&", "||", "{", "}", "(", ")", "->", "+", "-", "*", "/"}
+	tokens = []string{";", ",", "&&", "||", "{", "}", "(", ")", "->", "+", "-", "*", "/", "'"}
 )
 
 type Node interface {
 	Add(child Node)
 	GetChildren() []Node
 	SetParent(parent Node)
-	Generate() string // Create assembly string
+	Generate(program *gen.Program) // Create assembly string
 }
 
-type ParsableBlockNode interface {
+type ParsableNode interface {
 	Node
 	Parse(scanner *util.Scanner)
 }
@@ -49,40 +50,33 @@ func (node *BaseNode) SetParent(parent Node) {
 }
 
 type ProgramNode struct {
-	ParseBlockNode
+	ParseNode
 	constants   map[string]Constant
 	packageName string
 }
 
 type PackageNode struct {
-	ParseBlockNode
+	ParseNode
 }
 
-type ParseBlockNode struct {
+type ParseNode struct {
 	BaseNode
 }
 
-func (node *BaseNode) Generate() string {
-	return ""
+func (node *BaseNode) Generate(program *gen.Program) {
+	for _, child := range node.children {
+		child.Generate(program)
+	}
 }
 
-func (node *ProgramNode) Generate() string {
-	assembly := `.data
-_message:
-	.string "Hello World!\n"
-
-.text
-.intel_syntax noprefix
-.globl	_main`
-	children := node.children
-	for {
-		assembly += children[0].Generate() + "\n"
-		children = children[0].GetChildren()
-		if children == nil {
-			break
-		}
+func (node *ProgramNode) Generate(program *gen.Program) {
+	program.ConstantsSection = &gen.Section{
+		Decorators: []string{".data"},
 	}
-	return assembly
+	program.FuncSection = &gen.Section{
+		Decorators: []string{".text", ".intel_syntax noprefix", ".globl _main"},
+	}
+	node.BaseNode.Generate(program)
 }
 
 func (node *ProgramNode) Parse(scanner *util.Scanner) {
@@ -100,10 +94,19 @@ func (node *ProgramNode) Parse(scanner *util.Scanner) {
 	node.parseAndAdd(childNode, scanner)
 }
 
-func (node *ParseBlockNode) Parse(scanner *util.Scanner) {
+func (node *ParseNode) Parse(scanner *util.Scanner) {
 	nodeName := scanner.Next(Split)
 	fmt.Println(nodeName)
 	node.parseNextChild(nodeName, scanner)
+}
+
+func StrSplit(rest string) (string, int) {
+	for i := 0; i < len(rest); i++ {
+		if rune(rest[i]) == '\'' {
+			return rest[:i], i + 1
+		}
+	}
+	panic("String literal is not terminated!")
 }
 
 func Split(rest string) (string, int) {

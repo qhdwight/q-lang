@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os/exec"
 	"q-lang-go/parser"
+	"q-lang-go/parser/gen"
 )
 
 func main() {
@@ -16,15 +17,19 @@ func main() {
 	}
 	program := parser.Parse(*inputFiles)
 
-	assembly := program.Generate()
-	fmt.Println("Output assembly:", assembly)
+	assembly := new(gen.Program)
+	program.Generate(assembly)
+	fmt.Println("Output assembly:\n", assembly.ToString())
 
+	assemble(assembly)
+}
+
+func assemble(assembly *gen.Program) {
 	// TODO currently we write to file first and then call GCC. Find a way to pass it without file as we don't really want to touch the filesystem
-	err := ioutil.WriteFile("program.s", []byte(assembly), 0644)
+	err := ioutil.WriteFile("program.s", []byte(assembly.ToString()), 0644)
 	if err != nil {
 		panic(err)
 	}
-
 	command := exec.Command("gcc", "program.s", "-o", "program")
 	fmt.Println("Running command:", command.String())
 	// Run GCC to create native binary from assembly code
