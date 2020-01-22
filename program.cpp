@@ -1,7 +1,6 @@
-int bet() {
-    return 3;
-}
-
 int main() {
-    return bet();
+    int i = 3;
+    int j = 2;
+    int k = i + j;
+    return k;
 }

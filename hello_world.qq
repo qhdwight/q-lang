@@ -1,6 +1,10 @@
 pkg main {
     def void -> i32 {
         imp main {
+            i32 {
+              x = 2;
+              y = 3 + 4;
+            }
             pln 'Hello world!';
             out 1;
         }

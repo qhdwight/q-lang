@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"q-lang-go/parser/gen"
 	"q-lang-go/parser/util"
+	"strconv"
 )
 
 var (
@@ -29,6 +30,8 @@ type DefVarNode struct {
 
 type OperandNode struct {
 	BaseNode
+	i int
+	n string
 }
 
 type OperatorNode struct {
@@ -79,13 +82,38 @@ func (node *IntNode) Parse(scanner *util.Scanner) {
 			if operatorFunc, isOperator := OperatorFactory[value]; isOperator {
 				childNode = operatorFunc()
 			} else {
-				childNode = new(OperandNode)
+				i, _ := strconv.Atoi(value)
+				childNode = &OperandNode{i: i, n: name}
 			}
 			childNode.SetParent(node)
 			node.Add(childNode)
 			fmt.Println("Variable node:", name, "with value:", value)
 		}
 	}
+}
+
+func (node *IntNode) Generate(program *gen.Program) {
+	for _, child := range node.children {
+		if operandNode, isOperand := child.(*OperandNode); isOperand {
+			program.FuncStackHead += 4
+			program.FuncSubSection.Content = append(program.FuncSubSection.Content,
+				fmt.Sprintf("mov dword ptr [rbp - %d], %d", program.FuncStackHead, operandNode.i),
+			)
+			program.FuncSubSection.Variables[operandNode.n] = program.FuncStackHead
+		}
+	}
+	for nodeIndex, child := range node.children {
+		if _, isOperator := child.(*AdditionNode); isOperator {
+			firstOperand, secondOperand := node.children[nodeIndex-1].(*OperandNode), node.children[nodeIndex+1].(*OperandNode)
+			variables := program.FuncSubSection.Variables
+			program.FuncSubSection.Content = append(program.FuncSubSection.Content,
+				fmt.Sprintf("mov eax, dword ptr [rbp - %d]", variables[firstOperand.n]),
+				fmt.Sprintf("add eax, dword ptr [rbp - %d]", variables[secondOperand.n]),
+			)
+		}
+	}
+	program.FuncSubSection.Content = append(program.FuncSubSection.Content,
+	)
 }
 
 func (node *DefVarNode) Parse(scanner *util.Scanner) {

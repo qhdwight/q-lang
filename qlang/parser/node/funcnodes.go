@@ -40,7 +40,7 @@ type StringLiteralNode struct {
 
 func (node *StringLiteralNode) Parse(scanner *util.Scanner) {
 	node.str = scanner.Next(StrSplit)
-	fmt.Println("String literal:", "'"+node.str+"'")
+	fmt.Printf("String literal: '%s'\n", node.str)
 }
 
 func (node *StringLiteralNode) Generate(program *gen.Program) {
@@ -48,8 +48,9 @@ func (node *StringLiteralNode) Generate(program *gen.Program) {
 	asmLabel := "string" + strconv.Itoa(labelNum)
 	node.label = asmLabel
 	msgSubSection := &gen.SubSection{
-		Label:   asmLabel,
-		Content: []string{`.string "` + node.str + `\n"`},
+		Label:     asmLabel,
+		Content:   []string{fmt.Sprintf(`.string "%s\n"`, node.str)},
+		Variables: make(map[string]int),
 	}
 	program.ConstSections.SubSections = append(program.ConstSections.SubSections, msgSubSection)
 }
@@ -68,13 +69,13 @@ func (node *CallFuncNode) Parse(scanner *util.Scanner) {
 
 func (node *CallFuncNode) Generate(program *gen.Program) {
 	if node.name == "pln" {
-		funcSubSection := program.CurrentSubSection
+		funcSubSection := program.FuncSubSection
 		strNode := node.children[0].(*StringLiteralNode)
 		strNode.Generate(program)
 		funcSubSection.Content = append(funcSubSection.Content,
-			"lea rax, [rip + _"+strNode.label+"]",
+			fmt.Sprintf("lea rax, [rip + _%s]", strNode.label),
 			"mov rsi, rax # Pointer to string",
-			"mov rdx, "+strconv.Itoa(len(strNode.str)+1)+" # Size",
+			fmt.Sprintf("mov rdx, %d # Size", len(strNode.str)+1),
 			"mov rax, 0x2000004 # Write",
 			"mov rdi, 1 # Standard output",
 			"syscall",
@@ -122,8 +123,9 @@ func (node *ImplFuncNode) Generate(program *gen.Program) {
 		"mov rbp, rsp",
 		"",
 	}
-	funcSubSection := &gen.SubSection{Label: "main", Content: *content}
-	program.CurrentSubSection = funcSubSection
+	funcSubSection := &gen.SubSection{Label: "main", Content: *content, Variables: make(map[string]int)}
+	program.FuncSubSection = funcSubSection
+	program.FuncStackHead = 0
 	program.FuncSection.SubSections = append(program.FuncSection.SubSections, funcSubSection)
 	for _, child := range node.children {
 		child.Generate(program)
@@ -150,8 +152,8 @@ func (node *OutNode) Parse(scanner *util.Scanner) {
 }
 
 func (node *OutNode) Generate(program *gen.Program) {
-	program.CurrentSubSection.Content = append(program.CurrentSubSection.Content,
-		"mov eax, "+strconv.Itoa(node.returnValue),
+	program.FuncSubSection.Content = append(program.FuncSubSection.Content,
+		fmt.Sprintf("mov eax, %d", node.returnValue),
 	)
 }
 

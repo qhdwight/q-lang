@@ -4,7 +4,8 @@ import "strings"
 
 type Program struct {
 	ConstSections, FuncSection *Section
-	CurrentSubSection          *SubSection
+	FuncStackHead              int
+	FuncSubSection             *SubSection
 }
 
 func (program *Program) ToString() string {
