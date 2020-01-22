@@ -9,12 +9,13 @@ import (
 )
 
 var (
-	// Allows us to take q-lang code, which is raw text, and convert it into Go structs
+	// Allows us to take q-lang code, which is raw text, and convert it into a Go representation
 	Factory = map[string]func() ParsableNode{
 		"pkg": func() ParsableNode { return new(PackageNode) },
 		"def": func() ParsableNode { return new(DefineFuncNode) },
 		"imp": func() ParsableNode { return new(ImplFuncNode) },
 		"i32": func() ParsableNode { return new(IntNode) },
+		"out": func() ParsableNode { return new(OutNode) },
 	}
 	// TODO operators are defined in two locations. Add better system for managing tokens
 	tokens = []string{";", ",", "&&", "||", "{", "}", "(", ")", "->", "+", "-", "*", "/", "'"}

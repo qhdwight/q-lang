@@ -17,7 +17,7 @@ func (program *Program) ToString() string {
 		}
 		for _, subSections := range section.SubSections {
 			builder.WriteString("_")
-			builder.WriteString(subSections.Name)
+			builder.WriteString(subSections.Label)
 			builder.WriteString(":")
 			builder.WriteString("\n")
 			for _, line := range subSections.Content {

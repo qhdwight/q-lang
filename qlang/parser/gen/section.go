@@ -1,7 +1,7 @@
 package gen
 
 type SubSection struct {
-	Name    string
+	Label   string
 	Content []string
 }
 

@@ -28,6 +28,11 @@ type ArgumentNode struct {
 	ParseNode
 }
 
+type OutNode struct {
+	ParseNode
+	returnValue int
+}
+
 type StringLiteralNode struct {
 	ParseNode
 	str, label string
@@ -43,7 +48,7 @@ func (node *StringLiteralNode) Generate(program *gen.Program) {
 	asmLabel := "string" + strconv.Itoa(labelNum)
 	node.label = asmLabel
 	msgSubSection := &gen.SubSection{
-		Name:    asmLabel,
+		Label:   asmLabel,
 		Content: []string{`.string "` + node.str + `\n"`},
 	}
 	program.ConstSections.SubSections = append(program.ConstSections.SubSections, msgSubSection)
@@ -69,7 +74,7 @@ func (node *CallFuncNode) Generate(program *gen.Program) {
 		funcSubSection.Content = append(funcSubSection.Content,
 			"lea rax, [rip + _"+strNode.label+"]",
 			"mov rsi, rax # Pointer to string",
-			"mov rdx, "+strconv.Itoa(len(strNode.str) + 1)+" # Size",
+			"mov rdx, "+strconv.Itoa(len(strNode.str)+1)+" # Size",
 			"mov rax, 0x2000004 # Write",
 			"mov rdi, 1 # Standard output",
 			"syscall",
@@ -103,10 +108,10 @@ func (node *ImplFuncNode) Parse(scanner *util.Scanner) {
 	}
 	for {
 		nextToken := scanner.Next(Split)
-		if nextToken == "}" {
+		node.parseNextChild(nextToken, scanner)
+		if nextToken == "out" {
 			break
 		}
-		node.parseNextChild(nextToken, scanner)
 		fmt.Println("Func name:", funcName)
 	}
 }
@@ -115,16 +120,38 @@ func (node *ImplFuncNode) Generate(program *gen.Program) {
 	content := &[]string{
 		"push rbp",
 		"mov rbp, rsp",
+		"",
 	}
-	funcSubSection := &gen.SubSection{Name: "main", Content: *content}
+	funcSubSection := &gen.SubSection{Label: "main", Content: *content}
 	program.CurrentSubSection = funcSubSection
 	program.FuncSection.SubSections = append(program.FuncSection.SubSections, funcSubSection)
 	for _, child := range node.children {
 		child.Generate(program)
 	}
 	funcSubSection.Content = append(funcSubSection.Content,
+		"",
 		"pop rbp",
 		"ret",
+	)
+}
+
+func (node *OutNode) Parse(scanner *util.Scanner) {
+	for {
+		var err error
+		node.returnValue, err = strconv.Atoi(scanner.Next(Split))
+		if err != nil {
+			panic(err)
+		}
+		nextToken := scanner.Next(Split)
+		if nextToken == ";" {
+			break
+		}
+	}
+}
+
+func (node *OutNode) Generate(program *gen.Program) {
+	program.CurrentSubSection.Content = append(program.CurrentSubSection.Content,
+		"mov eax, "+strconv.Itoa(node.returnValue),
 	)
 }
 
@@ -132,8 +159,6 @@ func (node *BaseNode) parseNextChild(nextToken string, scanner *util.Scanner) {
 	if nodeFunc, isNode := Factory[nextToken]; isNode {
 		childNode := nodeFunc()
 		node.parseAndAdd(childNode, scanner)
-	} else if nextToken == "out" {
-
 	} else {
 		callNode := &CallFuncNode{name: nextToken}
 		fmt.Println("Function Call:", callNode.name)
