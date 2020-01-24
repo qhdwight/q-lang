@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os/exec"
-	"q-lang-go/parser"
-	"q-lang-go/parser/gen"
 )
 
 func main() {
@@ -15,16 +13,16 @@ func main() {
 	if *inputFiles == "" {
 		panic("No input Q files provided!")
 	}
-	prog := parser.Parse(*inputFiles)
+	prog := Parse(*inputFiles)
 
-	asm := new(gen.Program)
+	asm := new(Program)
 	prog.Generate(asm)
 	fmt.Println("Output asm:\n", asm.ToString())
 
 	assemble(asm)
 }
 
-func assemble(assembly *gen.Program) {
+func assemble(assembly *Program) {
 	// TODO currently we write to file first and then call GCC. Find a way to pass it without file as we don't really want to touch the filesystem
 	err := ioutil.WriteFile("program.s", []byte(assembly.ToString()), 0644)
 	if err != nil {

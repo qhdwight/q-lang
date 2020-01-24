@@ -1,41 +1,39 @@
 package main
 
 import (
-	"q-lang-go/parser/node"
-	"q-lang-go/parser/util"
 	"testing"
 )
 
 func TestTokenizer(t *testing.T) {
-	scanner := util.NewScanner("  a program  {qlang()&&||b } ")
-	if scanner.Next(node.Split) != "a" {
+	scanner := NewScanner("  a program  {qlang()&&||b } ")
+	if scanner.Next(Split) != "a" {
 		t.Error()
 	}
-	if scanner.Next(node.Split) != "program" {
+	if scanner.Next(Split) != "program" {
 		t.Error()
 	}
-	if scanner.Next(node.Split) != "{" {
+	if scanner.Next(Split) != "{" {
 		t.Error()
 	}
-	if scanner.Next(node.Split) != "qlang" {
+	if scanner.Next(Split) != "qlang" {
 		t.Error()
 	}
-	if scanner.Next(node.Split) != "(" {
+	if scanner.Next(Split) != "(" {
 		t.Error()
 	}
-	if scanner.Next(node.Split) != ")" {
+	if scanner.Next(Split) != ")" {
 		t.Error()
 	}
-	if scanner.Next(node.Split) != "&&" {
+	if scanner.Next(Split) != "&&" {
 		t.Error()
 	}
-	if scanner.Next(node.Split) != "||" {
+	if scanner.Next(Split) != "||" {
 		t.Error()
 	}
-	if scanner.Next(node.Split) != "b" {
+	if scanner.Next(Split) != "b" {
 		t.Error()
 	}
-	if scanner.Next(node.Split) != "}" {
+	if scanner.Next(Split) != "}" {
 		t.Error()
 	}
 }
