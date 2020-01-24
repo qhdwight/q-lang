@@ -1,11 +1,12 @@
 pkg main {
     def void -> i32 {
         imp main {
-            # i32 {
-            #   x = 2;
-            #   y = 3 + x;
-            # }
-            pln 'Hello world!';
+            for range 1,3 {
+                pln 'Hello world!';
+            }
+            for range 0,4 {
+                pln 'Yeah';
+            }
             out 0;
         }
     }

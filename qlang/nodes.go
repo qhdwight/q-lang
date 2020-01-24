@@ -2,12 +2,13 @@ package main
 
 var (
 	// Allows us to take q-lang code, which is raw text, and convert it into a Go representation
-	Factory = map[string]func() ParsableNode{
+	factory = map[string]func() ParsableNode{
 		"pkg": func() ParsableNode { return new(PckgNode) },
 		"def": func() ParsableNode { return new(DefineFuncNode) },
 		"imp": func() ParsableNode { return new(ImplFuncNode) },
 		"i32": func() ParsableNode { return new(DefIntNode) },
 		"out": func() ParsableNode { return new(OutNode) },
+		"for": func() ParsableNode { return new(LoopNode) },
 	}
 	OperatorFactory = map[string]func() OperableNode{
 		"+": func() OperableNode { return new(AdditionNode) },
@@ -31,6 +32,10 @@ type ParsableNode interface {
 	Parse(scanner *Scanner)
 }
 
+type OperableNode interface {
+	Node
+}
+
 type BaseNode struct {
 	children []Node
 	Parent   Node
@@ -46,6 +51,11 @@ func (node *BaseNode) GetChildren() []Node {
 
 func (node *BaseNode) SetParent(parent Node) {
 	node.Parent = parent
+}
+
+type LoopNode struct {
+	ParseNode
+	start, end int
 }
 
 type ProgNode struct {
@@ -110,26 +120,22 @@ type IntOperandNode struct {
 	i int
 }
 
-type OperatorNode struct {
+type IntOperatorNode struct {
 	BaseNode
 }
 
 type AdditionNode struct {
-	OperatorNode
+	IntOperatorNode
 }
 
 type SubtractionNode struct {
-	OperatorNode
+	IntOperatorNode
 }
 
 type MultiplicationNode struct {
-	OperatorNode
+	IntOperatorNode
 }
 
 type DivisionNode struct {
-	OperatorNode
-}
-
-type OperableNode interface {
-	Node
+	IntOperatorNode
 }

@@ -8,24 +8,24 @@ import (
 	"unicode"
 )
 
-var (
-	labelNum = 0
-)
+func getProgram(code string) *ProgNode {
+	program := new(ProgNode)
+	program.Parse(NewScanner(code))
+	return program
+}
+
+func Parse(fileName string) *ProgNode {
+	bytes, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		panic(err)
+	}
+	code := string(bytes)
+	return getProgram(code)
+}
 
 func (node *StringLiteralNode) Parse(scanner *Scanner) {
 	node.str = scanner.Next(StrSplit)
 	fmt.Printf("String literal: '%s'\n", node.str)
-}
-
-func (node *StringLiteralNode) Generate(program *Program) {
-	labelNum++
-	asmLabel := fmt.Sprintf("string%d", labelNum)
-	node.label = asmLabel
-	msgSubSect := &SubSect{
-		Label: asmLabel, Content: []string{fmt.Sprintf(`.string "%s\n"`, node.str)},
-		Vars: make(map[string]int), Anons: make(map[Node]int),
-	}
-	program.ConstSect.SubSects = append(program.ConstSect.SubSects, msgSubSect)
 }
 
 func (node *CallFuncNode) Parse(scanner *Scanner) {
@@ -38,21 +38,6 @@ func (node *CallFuncNode) Parse(scanner *Scanner) {
 			break
 		}
 	}
-}
-
-func Parse(fileName string) *ProgNode {
-	bytes, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		panic(err)
-	}
-	code := string(bytes)
-	return getProgram(code)
-}
-
-func getProgram(code string) *ProgNode {
-	program := new(ProgNode)
-	program.Parse(NewScanner(code))
-	return program
 }
 
 func (node *DefIntNode) Parse(scanner *Scanner) {
@@ -102,8 +87,38 @@ func (node *ProgNode) Parse(scanner *Scanner) {
 		panic("Expected block for package!")
 	}
 	nodeName = scanner.Next(Split)
-	childNode := Factory[nodeName]()
+	childNode := factory[nodeName]()
 	node.parseAndAdd(childNode, scanner)
+}
+
+func (node *LoopNode) Parse(scanner *Scanner) {
+	if scanner.Next(Split) != "range" {
+		panic("Expected range")
+	}
+	start, err := strconv.Atoi(scanner.Next(Split))
+	node.start = start
+	if err != nil {
+		panic(err)
+	}
+	if scanner.Next(Split) != "," {
+		panic("Expected comma")
+	}
+	end, err := strconv.Atoi(scanner.Next(Split))
+	node.end = end
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Loops with range", start, "to", end)
+	if scanner.Next(Split) != "{" {
+		panic("Expected block")
+	}
+	for {
+		nextToken := scanner.Next(Split)
+		if nextToken == "}" {
+			break
+		}
+		node.parseNextChild(nextToken, scanner)
+	}
 }
 
 func (node *ParseNode) Parse(scanner *Scanner) {
@@ -165,23 +180,6 @@ findEnd:
 	return word[:wordLength], skipLength + wordLength
 }
 
-func (node *CallFuncNode) Generate(program *Program) {
-	if node.name == "pln" {
-		funcSubSect := program.FuncSubSect
-		strNode := node.children[0].(*StringLiteralNode)
-		strNode.Generate(program)
-		funcSubSect.Content = append(funcSubSect.Content,
-			fmt.Sprintf("lea rax, [rip + _%s]", strNode.label),
-			"mov rsi, rax # Pointer to string",
-			fmt.Sprintf("mov rdx, %d # Size", len(strNode.str)+1),
-			"mov rax, 0x2000004 # Write",
-			"mov rdi, 1 # Standard output",
-			"syscall",
-		)
-		//program.ConstSect.SubSects.
-	}
-}
-
 func (node *DefineFuncNode) Parse(scanner *Scanner) {
 	parameterType := scanner.Next(Split)
 	if scanner.Next(Split) != "->" {
@@ -202,40 +200,20 @@ func (node *DefineFuncNode) Parse(scanner *Scanner) {
 
 func (node *ImplFuncNode) Parse(scanner *Scanner) {
 	funcName := scanner.Next(Split)
+	fmt.Println("Func name:", funcName)
 	if scanner.Next(Split) != "{" {
 		panic("Expected block in function implementation!")
 	}
 	for {
 		nextToken := scanner.Next(Split)
+		if nextToken == "}" {
+			break
+		}
 		node.parseNextChild(nextToken, scanner)
 		if nextToken == "out" {
 			break
 		}
-		fmt.Println("Func name:", funcName)
 	}
-}
-
-func (node *ImplFuncNode) Generate(program *Program) {
-	content := &[]string{
-		"push rbp",
-		"mov rbp, rsp",
-		"",
-	}
-	funcSubSect := &SubSect{
-		Label: "main", Content: *content,
-		Vars: make(map[string]int), Anons: make(map[Node]int),
-	}
-	program.FuncSubSect = funcSubSect
-	program.FuncStackHead = 0
-	program.FuncSect.SubSects = append(program.FuncSect.SubSects, funcSubSect)
-	for _, child := range node.children {
-		child.Generate(program)
-	}
-	funcSubSect.Content = append(funcSubSect.Content,
-		"",
-		"pop rbp",
-		"ret",
-	)
 }
 
 func (node *OutNode) Parse(scanner *Scanner) {
@@ -252,14 +230,8 @@ func (node *OutNode) Parse(scanner *Scanner) {
 	}
 }
 
-func (node *OutNode) Generate(program *Program) {
-	program.FuncSubSect.Content = append(program.FuncSubSect.Content,
-		fmt.Sprintf("mov eax, %d", node.returnValue),
-	)
-}
-
 func (node *BaseNode) parseNextChild(nextToken string, scanner *Scanner) {
-	if nodeFunc, isNode := Factory[nextToken]; isNode {
+	if nodeFunc, isNode := factory[nextToken]; isNode {
 		childNode := nodeFunc()
 		node.parseAndAdd(childNode, scanner)
 	} else {
