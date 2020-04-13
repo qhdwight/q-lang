@@ -16,6 +16,6 @@ _main:
 	mov rdi, 1 # Standard output
 	syscall
 
-	mov	eax, 2
+	mov	eax, 0
 	pop	rbp
 	ret

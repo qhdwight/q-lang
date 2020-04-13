@@ -1,5 +1,8 @@
+int bet() {
+    int a = 3;
+    return a;
+}
+
 int main() {
-    for (int i = 0; i < 5; i++) {
-    }
-    return 0;
+    bet();
 }

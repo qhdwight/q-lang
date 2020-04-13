@@ -36,9 +36,17 @@ type OperableNode interface {
 	Node
 }
 
+type SimplifiableNode interface {
+	Node
+}
+
 type BaseNode struct {
 	children []Node
 	Parent   Node
+}
+
+type ExpressionNode struct {
+	BaseNode
 }
 
 func (node *BaseNode) Add(child Node) {
@@ -90,7 +98,6 @@ type ArgumentNode struct {
 
 type OutNode struct {
 	ParseNode
-	returnValue int
 }
 
 type StringLiteralNode struct {
@@ -117,11 +124,11 @@ type DefSingleIntNode struct {
 
 type IntOperandNode struct {
 	BaseNode
-	i int
+	val int
 }
 
 type IntOperatorNode struct {
-	BaseNode
+	ExpressionNode
 }
 
 type AdditionNode struct {

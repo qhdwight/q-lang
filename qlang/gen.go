@@ -14,7 +14,7 @@ func (node *DefSingleIntNode) Generate(program *Program) {
 	anons := funcSect.Anons
 	if len(node.children) == 1 {
 		funcSect.Content = append(funcSect.Content,
-			fmt.Sprintf("mov dword ptr [rbp - %d], %d", varStackPos*4, node.children[0].(*IntOperandNode).i),
+			fmt.Sprintf("mov dword ptr [rbp - %d], %d", varStackPos*4, node.children[0].(*IntOperandNode).val),
 		)
 	} else {
 		funcSect.Content = append(funcSect.Content,
@@ -25,7 +25,7 @@ func (node *DefSingleIntNode) Generate(program *Program) {
 				program.FuncStackHead++
 				operandStackPos := program.FuncStackHead
 				funcSect.Content = append(funcSect.Content,
-					fmt.Sprintf("mov dword ptr [rbp - %d], %d", operandStackPos*4, operandNode.i),
+					fmt.Sprintf("mov dword ptr [rbp - %d], %d", operandStackPos*4, operandNode.val),
 				)
 				anons[operandNode] = operandStackPos
 			}

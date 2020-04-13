@@ -60,18 +60,22 @@ func (node *DefIntNode) Parse(scanner *Scanner) {
 			if nextToken == ";" {
 				break
 			}
-			value := nextToken
+			strVal := nextToken
 			var childNode Node
 			// TODO post-processing needs to be done on nodes to make a tree which can be systematically simplified
-			if operatorFunc, isOperator := OperatorFactory[value]; isOperator {
+			if operatorFunc, isOperator := OperatorFactory[strVal]; isOperator {
 				childNode = operatorFunc()
 			} else {
-				i, _ := strconv.Atoi(value)
-				childNode = &IntOperandNode{i: i}
+				val, err := strconv.Atoi(strVal)
+				if err != nil {
+					// Reference to existing variable
+					val = 0
+				}
+				childNode = &IntOperandNode{val: val}
 			}
 			childNode.SetParent(varNode)
 			varNode.Add(childNode)
-			fmt.Println("Variable node:", name, "with value:", value)
+			fmt.Println("Variable node:", name, "with value:", strVal)
 		}
 	}
 }
@@ -217,16 +221,27 @@ func (node *ImplFuncNode) Parse(scanner *Scanner) {
 }
 
 func (node *OutNode) Parse(scanner *Scanner) {
+	// TODO: dup code
 	for {
-		var err error
-		node.returnValue, err = strconv.Atoi(scanner.Next(Split))
-		if err != nil {
-			panic(err)
-		}
 		nextToken := scanner.Next(Split)
 		if nextToken == ";" {
 			break
 		}
+		strVal := nextToken
+		var childNode Node
+		// TODO post-processing needs to be done on nodes to make a tree which can be systematically simplified
+		if operatorFunc, isOperator := OperatorFactory[strVal]; isOperator {
+			childNode = operatorFunc()
+		} else {
+			val, err := strconv.Atoi(strVal)
+			if err != nil {
+				// Reference to existing variable
+				val = 0
+			}
+			childNode = &IntOperandNode{val: val}
+		}
+		childNode.SetParent(node)
+		node.Add(childNode)
 	}
 }
 
