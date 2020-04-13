@@ -2,10 +2,10 @@ pkg main {
     def void -> i32 {
         imp main {
             i32 {
-              x = 2;
-              y = x + 6;
+                x = 2;
+                y = 7 + 3;
             }
-            out x + y;
+            out y;
         }
     }
     def i32, i32 -> i32 {

@@ -50,7 +50,7 @@ func (node *DefIntNode) Parse(scanner *Scanner) {
 			break
 		}
 		name := nextToken
-		varNode := &DefSingleIntNode{name: name}
+		varNode := &DefSingleVarNode{name: name}
 		node.children = append(node.children, varNode)
 		if scanner.Next(Split) != "=" {
 			panic("Expected assignment!")
@@ -71,7 +71,7 @@ func (node *DefIntNode) Parse(scanner *Scanner) {
 					// Reference to existing variable
 					val = 0
 				}
-				childNode = &IntOperandNode{val: val}
+				childNode = &OperandNode{val: val}
 			}
 			childNode.SetParent(varNode)
 			varNode.Add(childNode)
@@ -104,7 +104,7 @@ func (node *LoopNode) Parse(scanner *Scanner) {
 	if err != nil {
 		panic(err)
 	}
-	if scanner.Next(Split) != "," {
+	if scanner.Next(Split) != ".." {
 		panic("Expected comma")
 	}
 	end, err := strconv.Atoi(scanner.Next(Split))
@@ -221,28 +221,7 @@ func (node *ImplFuncNode) Parse(scanner *Scanner) {
 }
 
 func (node *OutNode) Parse(scanner *Scanner) {
-	// TODO: dup code
-	for {
-		nextToken := scanner.Next(Split)
-		if nextToken == ";" {
-			break
-		}
-		strVal := nextToken
-		var childNode Node
-		// TODO post-processing needs to be done on nodes to make a tree which can be systematically simplified
-		if operatorFunc, isOperator := OperatorFactory[strVal]; isOperator {
-			childNode = operatorFunc()
-		} else {
-			val, err := strconv.Atoi(strVal)
-			if err != nil {
-				// Reference to existing variable
-				val = 0
-			}
-			childNode = &IntOperandNode{val: val}
-		}
-		childNode.SetParent(node)
-		node.Add(childNode)
-	}
+	// TODO: implement
 }
 
 func (node *BaseNode) parseNextChild(nextToken string, scanner *Scanner) {

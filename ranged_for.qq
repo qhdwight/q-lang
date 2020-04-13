@@ -1,0 +1,9 @@
+pkg main {
+    def void -> i32 {
+        imp main {
+            for range 0..3 {
+                pln 'Loop';
+            }
+        }
+    }
+}

@@ -1,47 +1,45 @@
 package main
 
-import (
-	"strings"
+type (
+	Scope struct {
+		vars       map[Node]int
+		Head, Base int
+		Parent     *Scope
+	}
 )
 
-type SubSect struct {
-	Label   string
-	Content []string
-	Vars    map[string]int
-	Anons   map[Node]int
+func (scope *Scope) AllocVar(node Node, size int) int {
+	pos := scope.Head
+	scope.vars[node] = pos
+	scope.Head += size
+	return scope.Base + pos
 }
 
-type Sect struct {
-	Decorators []string
-	SubSects   []*SubSect
+func NewScope(parent *Scope) *Scope {
+	newScope := &Scope{
+		vars:   make(map[Node]int),
+		Head:   0,
+		Parent: parent,
+	}
+	if parent == nil {
+		newScope.Base = 0
+	} else {
+		newScope.Base = parent.Head
+	}
+	return newScope
 }
 
-type Program struct {
-	ConstSect, FuncSect *Sect
-	FuncStackHead       int
-	FuncSubSect         *SubSect
-}
-
-func (program *Program) ToString() string {
-	builder := strings.Builder{}
-	for _, sect := range []*Sect{program.ConstSect, program.FuncSect} {
-		for _, decorator := range sect.Decorators {
-			builder.WriteString(".")
-			builder.WriteString(decorator)
-			builder.WriteString("\n")
+func (scope *Scope) GetVarPos(node Node) int {
+	_scope := scope
+	for {
+		if pos, has := _scope.vars[node]; has {
+			return _scope.Base + pos
+		} else {
+			// Try again with parent scope
+			_scope = scope.Parent
 		}
-		for _, subSects := range sect.SubSects {
-			builder.WriteString("_")
-			builder.WriteString(subSects.Label)
-			builder.WriteString(":")
-			builder.WriteString("\n")
-			for _, line := range subSects.Content {
-				builder.WriteString("    ")
-				builder.WriteString(line)
-				builder.WriteString("\n")
-			}
-			builder.WriteString("\n")
+		if _scope.vars == nil {
+			panic("Scope does not contain requested variable")
 		}
 	}
-	return builder.String()
 }

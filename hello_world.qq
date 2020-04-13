@@ -1,11 +1,7 @@
 pkg main {
     def void -> i32 {
         imp main {
-            i32 {
-                x = 2;
-                y = x + 3;
-            }
-            out y;
+            pln 'Hello World';
         }
     }
 }
