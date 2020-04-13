@@ -15,14 +15,14 @@ func main() {
 	}
 	prog := Parse(*inputFiles)
 
-	asm := new(Program)
+	asm := NewProg()
 	prog.Generate(asm)
 	fmt.Println("Output asm:\n", asm.ToString())
 
 	assemble(asm)
 }
 
-func assemble(assembly *Program) {
+func assemble(assembly *Prog) {
 	// TODO currently we write to file first and then call GCC. Find a way to pass it without file as we don't really want to touch the filesystem
 	err := ioutil.WriteFile("program.s", []byte(assembly.ToString()), 0644)
 	if err != nil {

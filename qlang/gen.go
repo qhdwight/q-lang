@@ -7,8 +7,8 @@ var (
 	loopLabelNum = 0
 )
 
-func (node *DefSingleVarNode) Generate(program *Program) {
-	funcSect := program.FuncSubSect
+func (node *DefSingleVarNode) Generate(program *Prog) {
+	funcSect := program.MainSubSect
 	// TODO: handle types & sizes of variables instead of assuming 4 byte integers
 	varStackPos := program.Scope.AllocVar(node, 4)
 	if len(node.children) == 1 {
@@ -23,11 +23,12 @@ func (node *DefSingleVarNode) Generate(program *Program) {
 		exprScope := NewScope(program.Scope)
 		for _, child := range node.children {
 			if operandNode, isOperand := child.(*OperandNode); isOperand {
-				// TODO: operand ref to existing var on stack
-				operandStackPos := exprScope.AllocVar(operandNode, 4)
-				funcSect.Content = append(funcSect.Content,
-					fmt.Sprintf("mov dword ptr [rbp - %d], %d", operandStackPos, operandNode.val),
-				)
+				if len(operandNode.varName) == 0 {
+					operandStackPos := exprScope.AllocVar(operandNode, 4)
+					funcSect.Content = append(funcSect.Content,
+						fmt.Sprintf("mov dword ptr [rbp - %d], %d", operandStackPos, operandNode.val),
+					)
+				}
 			}
 		}
 		for nodeIndex, child := range node.children {
@@ -47,55 +48,49 @@ func (node *DefSingleVarNode) Generate(program *Program) {
 	}
 }
 
-func (node *BaseNode) Generate(program *Program) {
+func (node *BaseNode) Generate(program *Prog) {
 	for _, child := range node.children {
 		child.Generate(program)
 	}
 }
 
-func (node *ImplFuncNode) Generate(program *Program) {
-	content := &[]string{
+func (node *ImplFuncNode) Generate(program *Prog) {
+	program.MainSubSect.Content = append(program.MainSubSect.Content,
 		"push rbp",
 		"mov rbp, rsp",
 		"",
-	}
-	funcSubSect := &SubSect{
-		Label: "main", Content: *content,
-	}
-	program.FuncSubSect = funcSubSect
-	program.Scope = NewScope(nil)
-	program.FuncSect.SubSects = append(program.FuncSect.SubSects, funcSubSect)
+	)
 	for _, child := range node.children {
 		child.Generate(program)
 	}
-	funcSubSect.Content = append(funcSubSect.Content,
+	program.MainSubSect.Content = append(program.MainSubSect.Content,
 		"",
 		"pop rbp",
 		"ret",
 	)
 }
 
-func (node *OutNode) Generate(program *Program) {
-	program.FuncSubSect.Content = append(program.FuncSubSect.Content,
+func (node *OutNode) Generate(program *Prog) {
+	program.FuncSect.Content = append(program.FuncSect.Content,
 		fmt.Sprintf("mov eax, %d", 0),
 	)
 }
 
-func (node *StringLiteralNode) Generate(program *Program) {
+func (node *StringLiteralNode) Generate(program *Prog) {
 	strLabelNum++
 	asmLabel := fmt.Sprintf("string%d", strLabelNum)
 	node.label = asmLabel
-	msgSubSect := &SubSect{
+	msgSubSect := &Sect{
 		Label: asmLabel, Content: []string{fmt.Sprintf(`.string "%s\n"`, node.str)},
 	}
 	program.ConstSect.SubSects = append(program.ConstSect.SubSects, msgSubSect)
 }
 
-func (node *LoopNode) Generate(program *Program) {
+func (node *LoopNode) Generate(program *Prog) {
 	loopLabelNum++
-	funcSubSect := program.FuncSubSect
+	funcSubSect := program.MainSubSect
 	loopScope := NewScope(program.Scope)
-	counterPos := loopScope.AllocVar(&BaseNode{}, 4)
+	counterPos := loopScope.AllocVar(&DefSingleVarNode{name: "__counter"}, 4)
 	funcSubSect.Content = append(funcSubSect.Content,
 		fmt.Sprintf("mov dword ptr [rbp - %d], %d", counterPos, node.start),
 	)
@@ -122,12 +117,11 @@ func (node *LoopNode) Generate(program *Program) {
 	)
 }
 
-func (node *CallFuncNode) Generate(program *Program) {
+func (node *CallFuncNode) Generate(program *Prog) {
 	if node.name == "pln" {
-		funcSubSect := program.FuncSubSect
 		strNode := node.children[0].(*StringLiteralNode)
 		strNode.Generate(program)
-		funcSubSect.Content = append(funcSubSect.Content,
+		program.FuncSect.Content = append(program.FuncSect.Content,
 			fmt.Sprintf("lea rax, [rip + _%s]", strNode.label),
 			"mov rsi, rax # Pointer to string",
 			fmt.Sprintf("mov rdx, %d # Size", len(strNode.str)+1),
@@ -135,15 +129,48 @@ func (node *CallFuncNode) Generate(program *Program) {
 			"mov rdi, 1 # Standard output",
 			"syscall",
 		)
+	} else if node.name == "i_pln" {
+		// https://gcc.godbolt.org/z/3b2P5j
+		operand := node.children[0].(*OperandNode)
+		operand.Generate(program)
+		operandPos := program.Scope.GetVarPos(operand)
+		bufferPos := program.Scope.AllocVar(&DefSingleVarNode{name: "__buffer"}, 16)
+		program.LibrarySubSect.SubSects = append(program.LibrarySubSect.SubSects, &Sect{
+			Label:   "digitToChar",
+			Content: []string{"movabs r8, -3689348814741910323"},
+		})
+		program.LibrarySubSect.SubSects = append(program.LibrarySubSect.SubSects, &Sect{
+			Label: "charLoop",
+			Content: []string{
+				"mov rax, rdi",
+				"mul r8",
+				"shr rdx, 3", // Shift three right
+				"lea eax, [rdx + rdx]",
+				"lea eax, [rax + 4*rax]",
+				"mov ecx, edi",
+				"sub ecx, eax",
+				"or cl, 48", // 48 is '0' in ASCII, serves as our base for digit representation
+				"mov byte ptr [rsi - 1], cl",
+				"dec rsi",
+				"cmp rdi, 9", // Loop if we are above 9 (have more digits left)
+				"mov rdi, rdx",
+				"ja _charLoop",
+				"mov rax, rsi",
+				"ret",
+			},
+		})
+		program.MainSubSect.Content = append(program.MainSubSect.Content,
+			fmt.Sprintf("mov edi, dword ptr [rbp - %d]", operandPos),
+			fmt.Sprintf("lea rsi, dword ptr [rbp - %d]", bufferPos),
+			"call _digitToChar",
+			fmt.Sprintf("mov rdx, %d # Size", 5),
+			"mov rax, 0x2000004 # Write",
+			"mov rdi, 1 # Standard output",
+			"syscall",
+		)
 	}
 }
 
-func (node *ProgNode) Generate(program *Program) {
-	program.ConstSect = &Sect{
-		Decorators: []string{"data"},
-	}
-	program.FuncSect = &Sect{
-		Decorators: []string{"text", "intel_syntax noprefix", "globl _main"},
-	}
+func (node *ProgNode) Generate(program *Prog) {
 	node.BaseNode.Generate(program)
 }

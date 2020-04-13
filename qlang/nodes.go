@@ -25,7 +25,7 @@ type (
 		Add(child Node)
 		GetChildren() []Node
 		SetParent(parent Node)
-		Generate(program *Program) // Create assembly string
+		Generate(program *Prog) // Create assembly text
 	}
 	ParsableNode interface {
 		Node
@@ -99,7 +99,8 @@ type (
 	}
 	OperandNode struct {
 		BaseNode
-		val int
+		val     int
+		varName string
 	}
 	OperatorNode struct {
 		ExpressionNode

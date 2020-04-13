@@ -23,6 +23,12 @@ func Parse(fileName string) *ProgNode {
 	return getProgram(code)
 }
 
+func (node *ParseNode) Parse(scanner *Scanner) {
+	nodeName := scanner.Next(Split)
+	fmt.Println(nodeName)
+	node.parseNextChild(nodeName, scanner)
+}
+
 func (node *StringLiteralNode) Parse(scanner *Scanner) {
 	node.str = scanner.Next(StrSplit)
 	fmt.Printf("String literal: '%s'\n", node.str)
@@ -36,6 +42,8 @@ func (node *CallFuncNode) Parse(scanner *Scanner) {
 			node.parseAndAdd(literalNode, scanner)
 		} else if nextToken == ";" {
 			break
+		} else {
+			node.Add(parseOperand(nextToken))
 		}
 	}
 }
@@ -60,24 +68,30 @@ func (node *DefIntNode) Parse(scanner *Scanner) {
 			if nextToken == ";" {
 				break
 			}
-			strVal := nextToken
 			var childNode Node
-			// TODO post-processing needs to be done on nodes to make a tree which can be systematically simplified
-			if operatorFunc, isOperator := OperatorFactory[strVal]; isOperator {
+			if operatorFunc, isOperator := OperatorFactory[nextToken]; isOperator {
 				childNode = operatorFunc()
 			} else {
-				val, err := strconv.Atoi(strVal)
-				if err != nil {
-					// Reference to existing variable
-					val = 0
-				}
-				childNode = &OperandNode{val: val}
+				operandNode := parseOperand(nextToken)
+				childNode = operandNode
 			}
 			childNode.SetParent(varNode)
 			varNode.Add(childNode)
-			fmt.Println("Variable node:", name, "with value:", strVal)
 		}
+		fmt.Println("Variable node:", name)
 	}
+}
+
+func parseOperand(strVal string) *OperandNode {
+	operandNode := &OperandNode{}
+	val, err := strconv.Atoi(strVal)
+	if err == nil {
+		operandNode.val = val
+	} else {
+		// Reference to existing variable
+		operandNode.varName = strVal
+	}
+	return operandNode
 }
 
 func (node *ProgNode) Parse(scanner *Scanner) {
@@ -123,12 +137,6 @@ func (node *LoopNode) Parse(scanner *Scanner) {
 		}
 		node.parseNextChild(nextToken, scanner)
 	}
-}
-
-func (node *ParseNode) Parse(scanner *Scanner) {
-	nodeName := scanner.Next(Split)
-	fmt.Println(nodeName)
-	node.parseNextChild(nodeName, scanner)
 }
 
 func StrSplit(rest string) (string, int) {

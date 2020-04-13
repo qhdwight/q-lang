@@ -1,8 +1,8 @@
-int bet() {
+int testFunc() {
     int a = 3;
     return a;
 }
 
 int main() {
-    bet();
+    testFunc();
 }
