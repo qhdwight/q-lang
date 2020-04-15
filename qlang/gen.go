@@ -8,24 +8,24 @@ var (
 )
 
 func (node *DefSingleVarNode) Generate(program *Prog) {
-	funcSect := program.MainSubSect
 	// TODO: handle types & sizes of variables instead of assuming 4 byte integers
 	varStackPos := program.Scope.AllocVar(node, 4)
+	program.Scope = NewScope(program.Scope)
 	if len(node.children) == 1 {
-		funcSect.Content = append(funcSect.Content,
-			fmt.Sprintf("mov dword ptr [rbp - %d], %d", varStackPos, node.children[0].(*OperandNode).val),
+		operand := node.children[0].(*OperandNode)
+		program.CurSect.Content = append(program.CurSect.Content,
+			fmt.Sprintf("mov dword ptr [rbp - %d], %d", varStackPos, operand.val),
 		)
 	} else {
-		funcSect.Content = append(funcSect.Content,
+		program.CurSect.Content = append(program.CurSect.Content,
 			fmt.Sprintf("mov dword ptr [rbp - %d], 0", varStackPos),
 		)
 		// "Anonymous" variables that have no names can be allocated in a temporary scope
-		exprScope := NewScope(program.Scope)
 		for _, child := range node.children {
 			if operandNode, isOperand := child.(*OperandNode); isOperand {
 				if len(operandNode.varName) == 0 {
-					operandStackPos := exprScope.AllocVar(operandNode, 4)
-					funcSect.Content = append(funcSect.Content,
+					operandStackPos := program.Scope.AllocVar(operandNode, 4)
+					program.CurSect.Content = append(program.CurSect.Content,
 						fmt.Sprintf("mov dword ptr [rbp - %d], %d", operandStackPos, operandNode.val),
 					)
 				}
@@ -35,17 +35,18 @@ func (node *DefSingleVarNode) Generate(program *Prog) {
 			switch child.(type) {
 			case *AdditionNode:
 				firstOperand, secondOperand := node.children[nodeIndex-1].(*OperandNode), node.children[nodeIndex+1].(*OperandNode)
-				funcSect.Content = append(funcSect.Content,
-					fmt.Sprintf("mov eax, dword ptr [rbp - %d]", exprScope.GetVarPos(firstOperand)),
-					fmt.Sprintf("add eax, dword ptr [rbp - %d]", exprScope.GetVarPos(secondOperand)),
+				program.CurSect.Content = append(program.CurSect.Content,
+					fmt.Sprintf("mov eax, dword ptr [rbp - %d]", program.Scope.GetVarPos(firstOperand)),
+					fmt.Sprintf("add eax, dword ptr [rbp - %d]", program.Scope.GetVarPos(secondOperand)),
 				)
 				break
 			}
 		}
-		funcSect.Content = append(funcSect.Content,
+		program.CurSect.Content = append(program.CurSect.Content,
 			fmt.Sprintf("mov dword ptr [rbp - %d], eax", varStackPos),
 		)
 	}
+	program.Scope = program.Scope.Parent
 }
 
 func (node *BaseNode) Generate(program *Prog) {
@@ -55,16 +56,18 @@ func (node *BaseNode) Generate(program *Prog) {
 }
 
 func (node *ImplFuncNode) Generate(program *Prog) {
-	program.MainSubSect.Content = append(program.MainSubSect.Content,
+	program.CurSect.Content = append(program.CurSect.Content,
 		"push rbp",
 		"mov rbp, rsp",
+		"sub rsp, 64",
 		"",
 	)
 	for _, child := range node.children {
 		child.Generate(program)
 	}
-	program.MainSubSect.Content = append(program.MainSubSect.Content,
+	program.CurSect.Content = append(program.CurSect.Content,
 		"",
+		"add rsp, 64",
 		"pop rbp",
 		"ret",
 	)
@@ -88,40 +91,40 @@ func (node *StringLiteralNode) Generate(program *Prog) {
 
 func (node *LoopNode) Generate(program *Prog) {
 	loopLabelNum++
-	funcSubSect := program.MainSubSect
-	loopScope := NewScope(program.Scope)
-	counterPos := loopScope.AllocVar(&DefSingleVarNode{name: "__counter"}, 4)
-	funcSubSect.Content = append(funcSubSect.Content,
-		fmt.Sprintf("mov dword ptr [rbp - %d], %d", counterPos, node.start),
+	program.Scope = NewScope(program.Scope)
+	counterPos := program.Scope.AllocVar(&DefSingleVarNode{name: "__counter"}, 4)
+	program.CurSect.Content = append(program.CurSect.Content,
+		fmt.Sprintf("mov dword ptr [rbp - %d], %d # Counter", counterPos, node.start),
 	)
-	funcSubSect.Content = append(funcSubSect.Content,
+	program.CurSect.Content = append(program.CurSect.Content,
 		fmt.Sprintf("_loopCheck%d:", loopLabelNum),
 		fmt.Sprintf("cmp dword ptr [rbp - %d], %d", counterPos, node.end),
 		fmt.Sprintf("jge _loopContinue%d", loopLabelNum),
 		fmt.Sprintf("jmp _loopBody%d", loopLabelNum),
 	)
-	funcSubSect.Content = append(funcSubSect.Content,
+	program.CurSect.Content = append(program.CurSect.Content,
 		fmt.Sprintf("_loopBody%d:", loopLabelNum),
 	)
 	for _, child := range node.children {
 		child.Generate(program)
 	}
-	funcSubSect.Content = append(funcSubSect.Content,
+	program.CurSect.Content = append(program.CurSect.Content,
 		fmt.Sprintf("mov eax, dword ptr [rbp - %d]", counterPos),
-		"add eax, 1",
+		"inc eax",
 		fmt.Sprintf("mov dword ptr [rbp - %d], eax", counterPos),
 		fmt.Sprintf("jmp _loopCheck%d", loopLabelNum),
 	)
-	funcSubSect.Content = append(funcSubSect.Content,
+	program.CurSect.Content = append(program.CurSect.Content,
 		fmt.Sprintf("_loopContinue%d:", loopLabelNum),
 	)
+	program.Scope = program.Scope.Parent
 }
 
 func (node *CallFuncNode) Generate(program *Prog) {
 	if node.name == "pln" {
 		strNode := node.children[0].(*StringLiteralNode)
 		strNode.Generate(program)
-		program.FuncSect.Content = append(program.FuncSect.Content,
+		program.CurSect.Content = append(program.CurSect.Content,
 			fmt.Sprintf("lea rax, [rip + _%s]", strNode.label),
 			"mov rsi, rax # Pointer to string",
 			fmt.Sprintf("mov rdx, %d # Size", len(strNode.str)+1),
@@ -130,43 +133,61 @@ func (node *CallFuncNode) Generate(program *Prog) {
 			"syscall",
 		)
 	} else if node.name == "i_pln" {
-		// https://gcc.godbolt.org/z/3b2P5j
+		program.Scope = NewScope(program.Scope)
 		operand := node.children[0].(*OperandNode)
 		operand.Generate(program)
 		operandPos := program.Scope.GetVarPos(operand)
 		bufferPos := program.Scope.AllocVar(&DefSingleVarNode{name: "__buffer"}, 16)
-		program.LibrarySubSect.SubSects = append(program.LibrarySubSect.SubSects, &Sect{
-			Label:   "digitToChar",
-			Content: []string{"movabs r8, -3689348814741910323"},
-		})
-		program.LibrarySubSect.SubSects = append(program.LibrarySubSect.SubSects, &Sect{
-			Label: "charLoop",
-			Content: []string{
-				"mov rax, rdi",
-				"mul r8",
-				"shr rdx, 3", // Shift three right
-				"lea eax, [rdx + rdx]",
-				"lea eax, [rax + 4*rax]",
-				"mov ecx, edi",
-				"sub ecx, eax",
-				"or cl, 48", // 48 is '0' in ASCII, serves as our base for digit representation
-				"mov byte ptr [rsi - 1], cl",
-				"dec rsi",
-				"cmp rdi, 9", // Loop if we are above 9 (have more digits left)
-				"mov rdi, rdx",
-				"ja _charLoop",
-				"mov rax, rsi",
-				"ret",
-			},
-		})
-		program.MainSubSect.Content = append(program.MainSubSect.Content,
-			fmt.Sprintf("mov edi, dword ptr [rbp - %d]", operandPos),
-			fmt.Sprintf("lea rsi, dword ptr [rbp - %d]", bufferPos),
+		// Algorithm in C: https://gcc.godbolt.org/z/3b2P5j
+		needsLibrary := true
+		for _, subSect := range program.LibrarySubSect.SubSects {
+			if subSect.Label == "charLoop" {
+				needsLibrary = false
+				break
+			}
+		}
+		if needsLibrary {
+			program.LibrarySubSect.SubSects = append(program.LibrarySubSect.SubSects, &Sect{
+				Label: "digitToChar",
+				Content: []string{
+					"movabs r8, -3689348814741910323",
+					"xor r9, r9",                 // Character count - xor with self cheaply zeroes
+					"mov byte ptr [rsi - 1], 10", // Add newline at the end
+					"dec rsi",
+					"inc r9",
+				},
+			})
+			program.LibrarySubSect.SubSects = append(program.LibrarySubSect.SubSects, &Sect{
+				Label: "charLoop",
+				Content: []string{ // i32: edi, char[]: rsi
+					"movsxd rax, edi", // Cast signed 32 bit to unsigned 64 bit
+					"mul r8",
+					"shr rdx, 3", // Shift three right
+					"lea eax, [rdx + rdx]",
+					"lea eax, [rax + 4*rax]",
+					"mov ecx, edi",
+					"sub ecx, eax",
+					"or cl, 48",                  // 48 is '0' in ASCII, serves as our base for digit representation
+					"mov byte ptr [rsi - 1], cl", // 1 byte for character
+					"dec rsi",
+					"inc r9",
+					"cmp rdi, 9", // Check if we are above 9 (have more digits left)
+					"mov rdi, rdx",
+					"ja _charLoop", // Check cmp instruction to loop if we have more digits
+					"ret",
+				},
+			})
+			program.Scope = program.Scope.Parent
+		}
+		program.CurSect.Content = append(program.CurSect.Content,
+			fmt.Sprintf("mov edi, dword ptr [rbp - %d] # Integer argument", operandPos),
+			fmt.Sprintf("lea rsi, [rbp - %d] # Buffer pointer argument", bufferPos-16),
 			"call _digitToChar",
-			fmt.Sprintf("mov rdx, %d # Size", 5),
+			// fmt.Sprintf("lea rsi, [rbp - %d]", bufferPos),
+			"mov rdx, r9 # Size",
 			"mov rax, 0x2000004 # Write",
 			"mov rdi, 1 # Standard output",
-			"syscall",
+			"syscall", // edi already set earlier
 		)
 	}
 }

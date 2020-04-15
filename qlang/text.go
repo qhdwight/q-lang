@@ -15,6 +15,7 @@ type (
 		ConstSect, FuncSect *Sect
 		LibrarySubSect      *Sect
 		MainSubSect         *Sect
+		CurSect             *Sect
 		Scope               *Scope
 	}
 )
@@ -34,6 +35,7 @@ func NewProg() *Prog {
 	}
 	prog.FuncSect.SubSects = append(prog.FuncSect.SubSects, prog.LibrarySubSect, prog.MainSubSect)
 	prog.Scope = NewScope(nil)
+	prog.CurSect = prog.MainSubSect
 	return prog
 }
 

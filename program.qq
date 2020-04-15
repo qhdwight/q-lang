@@ -2,10 +2,13 @@ pkg main {
     def void -> i32 {
         imp main {
             i32 {
-                x = 21;
-                y = x + 31;
+                x = 43;
+                z = 2;
             }
-            i_pln y;
+            for range 0..5 {
+                i32 { y = x + z; }
+                i_pln y;
+            }
             out y;
         }
     }

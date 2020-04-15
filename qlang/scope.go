@@ -13,10 +13,10 @@ type (
 )
 
 func (scope *Scope) AllocVar(node Node, size int) int {
-	pos := scope.Head
-	scope.vars[NodeName(node)] = pos
 	scope.Head += size
-	return scope.Base + pos
+	pos := scope.Base + scope.Head
+	scope.vars[NodeName(node)] = pos
+	return pos
 }
 
 func NodeName(node Node) string {
@@ -45,8 +45,9 @@ func NewScope(parent *Scope) *Scope {
 		newScope.Base = 0
 	} else {
 		newScope.Base = parent.Head
+		newScope.Head = parent.Head
 		for k, v := range parent.vars {
-			newScope.vars[k] = v - parent.Head
+			newScope.vars[k] = v
 		}
 	}
 	return newScope
@@ -54,7 +55,7 @@ func NewScope(parent *Scope) *Scope {
 
 func (scope *Scope) GetVarPos(node Node) int {
 	if pos, has := scope.vars[NodeName(node)]; has {
-		return scope.Base + pos
+		return pos
 	} else {
 		panic("Scope does not contain requested anonymous variable")
 	}
