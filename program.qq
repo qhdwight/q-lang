@@ -1,20 +1,23 @@
 pkg main {
+    dat test {
+        i32 a;
+    }
     def void -> i32 {
         imp main {
+            test {
+                a := {};
+            }
             i32 {
-                x = 43;
-                z = 2;
+                b := 2 + 3;
+                c := 4 + b + b;
             }
-            for range 0..5 {
-                i32 { y = x + z; }
-                i_pln y;
-            }
-            out y;
+            i_pln c;
+            out 0;
         }
     }
-    def i32, i32 -> i32 {
-        imp calculate(a, b) {
-            out a + b;
-        }
-    }
+    # def i32, i32 -> i32 {
+    #     imp calculate(_a, _b) {
+    #         out _a + _b;
+    #     }
+    # }
 }

@@ -1,12 +1,12 @@
 package main
 
 var (
-	// Allows us to take q-lang code, which is raw text, and convert it into a Go representation
+	// Allows us to take q-lang code, which is raw text, and convert it into a node-based Go representation
 	factory = map[string]func() ParsableNode{
 		"pkg": func() ParsableNode { return new(PckgNode) },
 		"def": func() ParsableNode { return new(DefineFuncNode) },
 		"imp": func() ParsableNode { return new(ImplFuncNode) },
-		"i32": func() ParsableNode { return new(DefIntNode) },
+		"dat": func() ParsableNode { return new(DefDatNode) },
 		"out": func() ParsableNode { return new(OutNode) },
 		"for": func() ParsableNode { return new(LoopNode) },
 	}
@@ -16,8 +16,8 @@ var (
 		"*": func() OperableNode { return new(MultiplicationNode) },
 		"/": func() OperableNode { return new(DivisionNode) },
 	}
-	// TODO operators are defined in two locations. Add better system for managing tokens
-	tokens = []string{";", "..", ",", "&&", "||", "{", "}", "(", ")", "->", "+", "-", "*", "/", "'"}
+	// TODO:refactor operators are defined in two locations. Add better system for managing tokens
+	tokens = []string{";", "..", ",", "&&", "||", "{", "}", "(", ")", "->", "+", "-", "*", "/", "'", ":="}
 )
 
 type (
@@ -25,7 +25,7 @@ type (
 		Add(child Node)
 		GetChildren() []Node
 		SetParent(parent Node)
-		Generate(program *Prog) // Create assembly text
+		Generate(prog *Prog) // Create assembly text
 	}
 	ParsableNode interface {
 		Node
@@ -63,6 +63,7 @@ type (
 	ProgNode struct {
 		ParseNode
 		pckgName string
+		datDefs  map[string]*DefDatNode
 	}
 	PckgNode struct {
 		ParseNode
@@ -87,20 +88,18 @@ type (
 		ParseNode
 		str, label string
 	}
-	DefIntNode struct {
-		DefVarNode
-	}
-	DefVarNode struct {
+	VarNode struct {
 		ParseNode
+		typeName string
 	}
-	DefSingleVarNode struct {
+	SingleVarNode struct {
 		ParseNode
-		name string
+		name, typeName string
 	}
 	OperandNode struct {
 		BaseNode
-		val     int
-		varName string
+		val               int
+		varName, typeName string // If variable name is empty, assume value is valid
 	}
 	OperatorNode struct {
 		ExpressionNode
@@ -116,5 +115,17 @@ type (
 	}
 	DivisionNode struct {
 		OperatorNode
+	}
+
+	/* ===== ECS ====== */
+
+	DefDatNode struct {
+		ParseNode
+		name string
+	}
+
+	DefDatPropNode struct {
+		ParseNode
+		name string
 	}
 )

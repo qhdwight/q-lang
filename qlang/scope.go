@@ -21,7 +21,7 @@ func (scope *Scope) AllocVar(node Node, size int) int {
 
 func NodeName(node Node) string {
 	switch n := node.(type) {
-	case *DefSingleVarNode:
+	case *SingleVarNode:
 		return n.name
 	case *OperandNode:
 		if len(n.varName) == 0 {

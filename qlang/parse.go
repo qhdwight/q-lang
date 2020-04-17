@@ -8,10 +8,15 @@ import (
 	"unicode"
 )
 
+var (
+	// TODO:refactor avoid global variable
+	prog *ProgNode
+)
+
 func getProgram(code string) *ProgNode {
-	program := new(ProgNode)
-	program.Parse(NewScanner(code))
-	return program
+	prog = &ProgNode{datDefs: make(map[string]*DefDatNode)}
+	prog.Parse(NewScanner(code))
+	return prog
 }
 
 func Parse(fileName string) *ProgNode {
@@ -43,12 +48,12 @@ func (node *CallFuncNode) Parse(scanner *Scanner) {
 		} else if nextToken == ";" {
 			break
 		} else {
-			node.Add(parseOperand(nextToken))
+			node.Add(parseOperand(nextToken, "i32"))
 		}
 	}
 }
 
-func (node *DefIntNode) Parse(scanner *Scanner) {
+func (node *VarNode) Parse(scanner *Scanner) {
 	if scanner.Next(Split) != "{" {
 		panic("Expected block for variable declaration!")
 	}
@@ -58,9 +63,9 @@ func (node *DefIntNode) Parse(scanner *Scanner) {
 			break
 		}
 		name := nextToken
-		varNode := &DefSingleVarNode{name: name}
+		varNode := &SingleVarNode{name: name, typeName: node.typeName}
 		node.children = append(node.children, varNode)
-		if scanner.Next(Split) != "=" {
+		if scanner.Next(Split) != ":=" {
 			panic("Expected assignment!")
 		}
 		for {
@@ -72,7 +77,7 @@ func (node *DefIntNode) Parse(scanner *Scanner) {
 			if operatorFunc, isOperator := OperatorFactory[nextToken]; isOperator {
 				childNode = operatorFunc()
 			} else {
-				operandNode := parseOperand(nextToken)
+				operandNode := parseOperand(nextToken, node.typeName)
 				childNode = operandNode
 			}
 			childNode.SetParent(varNode)
@@ -82,21 +87,26 @@ func (node *DefIntNode) Parse(scanner *Scanner) {
 	}
 }
 
-func parseOperand(strVal string) *OperandNode {
-	operandNode := &OperandNode{}
-	val, err := strconv.Atoi(strVal)
-	if err == nil {
-		operandNode.val = val
+func parseOperand(strVal, typeName string) *OperandNode {
+	operandNode := &OperandNode{typeName: typeName}
+	if typeName == "i32" {
+		val, err := strconv.Atoi(strVal)
+		if err == nil {
+			operandNode.val = val
+			return operandNode
+		}
 	} else {
-		// Reference to existing variable
-		operandNode.varName = strVal
+		// TODO:feature parse
+		return operandNode
 	}
+	// Reference to existing variable
+	operandNode.varName = strVal
 	return operandNode
 }
 
 func (node *ProgNode) Parse(scanner *Scanner) {
-	nodeName := scanner.Next(Split)
-	if nodeName != "pkg" {
+	nextToken := scanner.Next(Split)
+	if nextToken != "pkg" {
 		panic("Expected package first!")
 	}
 	node.pckgName = scanner.Next(Split)
@@ -104,9 +114,14 @@ func (node *ProgNode) Parse(scanner *Scanner) {
 	if scanner.Next(Split) != "{" {
 		panic("Expected block for package!")
 	}
-	nodeName = scanner.Next(Split)
-	childNode := factory[nodeName]()
-	node.parseAndAdd(childNode, scanner)
+	for {
+		nextToken = scanner.Next(Split)
+		if nextToken == "}" {
+			break
+		}
+		childNode := factory[nextToken]()
+		node.parseAndAdd(childNode, scanner)
+	}
 }
 
 func (node *LoopNode) Parse(scanner *Scanner) {
@@ -212,7 +227,7 @@ func (node *DefineFuncNode) Parse(scanner *Scanner) {
 
 func (node *ImplFuncNode) Parse(scanner *Scanner) {
 	funcName := scanner.Next(Split)
-	fmt.Println("Func name:", funcName)
+	fmt.Println("Function name:", funcName)
 	if scanner.Next(Split) != "{" {
 		panic("Expected block in function implementation!")
 	}
@@ -229,13 +244,47 @@ func (node *ImplFuncNode) Parse(scanner *Scanner) {
 }
 
 func (node *OutNode) Parse(scanner *Scanner) {
-	// TODO: implement
+	// TODO:warning implement
+	scanner.Next(Split)
+	scanner.Next(Split)
+}
+
+func (node *DefDatNode) Parse(scanner *Scanner) {
+	node.name = scanner.Next(Split)
+	prog.datDefs[node.name] = node
+	fmt.Println("Data structure with name:", node.name)
+	if scanner.Next(Split) != "{" {
+		panic("Expected block in data definition!")
+	}
+	for {
+		nextToken := scanner.Next(Split)
+		if nextToken == "}" {
+			break
+		}
+		node.parseAndAdd(new(DefDatPropNode), scanner)
+	}
+}
+
+func (node *DefDatPropNode) Parse(scanner *Scanner) {
+	// TODO:feature allow for more than just i32
+	_ = scanner.Peek(Split)
+	node.name = scanner.Next(Split)
+	fmt.Println("Property with name:", node.name)
+	if scanner.Next(Split) != ";" {
+		panic("Expected semicolon to end property definition!")
+	}
 }
 
 func (node *BaseNode) parseNextChild(nextToken string, scanner *Scanner) {
 	if nodeFunc, isNode := factory[nextToken]; isNode {
 		childNode := nodeFunc()
 		node.parseAndAdd(childNode, scanner)
+	} else if nextToken == "i32" {
+		implVarNode := &VarNode{typeName: nextToken}
+		node.parseAndAdd(implVarNode, scanner)
+	} else if datDef, isDatDef := prog.datDefs[nextToken]; isDatDef {
+		implVarNode := &VarNode{typeName: datDef.name}
+		node.parseAndAdd(implVarNode, scanner)
 	} else {
 		callNode := &CallFuncNode{name: nextToken}
 		fmt.Println("Function Call:", callNode.name)

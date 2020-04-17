@@ -1,52 +1,46 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 var (
 	strLabelNum  = 0
 	loopLabelNum = 0
 )
 
-func (node *DefSingleVarNode) Generate(program *Prog) {
-	// TODO: handle types & sizes of variables instead of assuming 4 byte integers
-	varStackPos := program.Scope.AllocVar(node, 4)
-	program.Scope = NewScope(program.Scope)
-	if len(node.children) == 1 {
-		operand := node.children[0].(*OperandNode)
-		program.CurSect.Content = append(program.CurSect.Content,
-			fmt.Sprintf("mov dword ptr [rbp - %d], %d", varStackPos, operand.val),
-		)
+func (node *SingleVarNode) Generate(program *Prog) {
+	if node.typeName == "i32" {
+		node.genInt(program)
 	} else {
-		program.CurSect.Content = append(program.CurSect.Content,
-			fmt.Sprintf("mov dword ptr [rbp - %d], 0", varStackPos),
-		)
-		// "Anonymous" variables that have no names can be allocated in a temporary scope
-		for _, child := range node.children {
-			if operandNode, isOperand := child.(*OperandNode); isOperand {
-				if len(operandNode.varName) == 0 {
-					operandStackPos := program.Scope.AllocVar(operandNode, 4)
-					program.CurSect.Content = append(program.CurSect.Content,
-						fmt.Sprintf("mov dword ptr [rbp - %d], %d", operandStackPos, operandNode.val),
-					)
-				}
-			}
-		}
-		for nodeIndex, child := range node.children {
-			switch child.(type) {
-			case *AdditionNode:
-				firstOperand, secondOperand := node.children[nodeIndex-1].(*OperandNode), node.children[nodeIndex+1].(*OperandNode)
-				program.CurSect.Content = append(program.CurSect.Content,
-					fmt.Sprintf("mov eax, dword ptr [rbp - %d]", program.Scope.GetVarPos(firstOperand)),
-					fmt.Sprintf("add eax, dword ptr [rbp - %d]", program.Scope.GetVarPos(secondOperand)),
-				)
-				break
-			}
-		}
-		program.CurSect.Content = append(program.CurSect.Content,
-			fmt.Sprintf("mov dword ptr [rbp - %d], eax", varStackPos),
-		)
+
 	}
-	program.Scope = program.Scope.Parent
+}
+
+func (node *SingleVarNode) genInt(program *Prog) {
+	varStackPos := program.Scope.AllocVar(node, 4)
+
+	getMovArg := func(operandNode *OperandNode) string {
+		if len(operandNode.varName) > 0 {
+			return fmt.Sprintf("dword ptr [rbp - %d]", program.Scope.GetVarPos(operandNode))
+		} else {
+			return strconv.Itoa(operandNode.val)
+		}
+	}
+
+	firstChild := node.children[0].(*OperandNode)
+	program.CurSect.Content = append(program.CurSect.Content, fmt.Sprintf("mov eax, %s", getMovArg(firstChild)))
+	for nodeIndex, child := range node.children {
+		switch child.(type) {
+		case *AdditionNode:
+			operand := node.children[nodeIndex+1].(*OperandNode)
+			program.CurSect.Content = append(program.CurSect.Content, fmt.Sprintf("add eax, %s", getMovArg(operand)))
+			break
+		}
+	}
+
+	program.CurSect.Content = append(program.CurSect.Content, fmt.Sprintf("mov dword ptr [rbp - %d], eax", varStackPos))
 }
 
 func (node *BaseNode) Generate(program *Prog) {
@@ -56,6 +50,7 @@ func (node *BaseNode) Generate(program *Prog) {
 }
 
 func (node *ImplFuncNode) Generate(program *Prog) {
+	// TODO:warning detect stack size properly instead of subtracting constant
 	program.CurSect.Content = append(program.CurSect.Content,
 		"push rbp",
 		"mov rbp, rsp",
@@ -74,7 +69,7 @@ func (node *ImplFuncNode) Generate(program *Prog) {
 }
 
 func (node *OutNode) Generate(program *Prog) {
-	program.FuncSect.Content = append(program.FuncSect.Content,
+	program.CurSect.Content = append(program.CurSect.Content,
 		fmt.Sprintf("mov eax, %d", 0),
 	)
 }
@@ -92,7 +87,7 @@ func (node *StringLiteralNode) Generate(program *Prog) {
 func (node *LoopNode) Generate(program *Prog) {
 	loopLabelNum++
 	program.Scope = NewScope(program.Scope)
-	counterPos := program.Scope.AllocVar(&DefSingleVarNode{name: "__counter"}, 4)
+	counterPos := program.Scope.AllocVar(&SingleVarNode{name: "__counter", typeName: "i32"}, 4)
 	program.CurSect.Content = append(program.CurSect.Content,
 		fmt.Sprintf("mov dword ptr [rbp - %d], %d # Counter", counterPos, node.start),
 	)
@@ -137,7 +132,7 @@ func (node *CallFuncNode) Generate(program *Prog) {
 		operand := node.children[0].(*OperandNode)
 		operand.Generate(program)
 		operandPos := program.Scope.GetVarPos(operand)
-		bufferPos := program.Scope.AllocVar(&DefSingleVarNode{name: "__buffer"}, 16)
+		bufferPos := program.Scope.AllocVar(&SingleVarNode{name: "__bufPos", typeName: "i32"}, 16)
 		// Algorithm in C: https://gcc.godbolt.org/z/3b2P5j
 		needsLibrary := true
 		for _, subSect := range program.LibrarySubSect.SubSects {
