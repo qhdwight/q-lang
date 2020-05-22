@@ -10,13 +10,13 @@ import (
 
 var (
 	// TODO:refactor avoid global variable
-	prog *ProgNode
+	progNode *ProgNode
 )
 
-func getProgram(code string) *ProgNode {
-	prog = &ProgNode{datDefs: make(map[string]*DefDatNode)}
-	prog.Parse(NewScanner(code))
-	return prog
+func getProg(code string) *ProgNode {
+	progNode = &ProgNode{datDefs: make(map[string]*DefDatNode)}
+	progNode.Parse(NewScanner(code))
+	return progNode
 }
 
 func Parse(fileName string) *ProgNode {
@@ -25,13 +25,12 @@ func Parse(fileName string) *ProgNode {
 		panic(err)
 	}
 	code := string(bytes)
-	return getProgram(code)
+	return getProg(code)
 }
 
 func (node *ParseNode) Parse(scanner *Scanner) {
 	nodeName := scanner.Next(Split)
-	fmt.Println(nodeName)
-	node.parseNextChild(nodeName, scanner)
+	node.parseNextStatementNode(nodeName, scanner)
 }
 
 func (node *StringLiteralNode) Parse(scanner *Scanner) {
@@ -40,20 +39,19 @@ func (node *StringLiteralNode) Parse(scanner *Scanner) {
 }
 
 func (node *CallFuncNode) Parse(scanner *Scanner) {
-	for {
-		nextToken := scanner.Next(Split)
-		if nextToken == "'" {
-			literalNode := new(StringLiteralNode)
-			node.parseAndAdd(literalNode, scanner)
-		} else if nextToken == ";" {
-			break
-		} else {
-			node.Add(parseOperand(nextToken, "i32"))
+	fmt.Println("Function Call:", node.name)
+	if node.name == "pln" {
+		if scanner.Next(Split) != "'" {
+			panic("Expected string literal!")
 		}
+		literalNode := new(StringLiteralNode)
+		node.parseAndAdd(literalNode, scanner)
+		return
 	}
+	node.parseExpr(scanner, func(token string) bool { return token == ";" })
 }
 
-func (node *VarNode) Parse(scanner *Scanner) {
+func (node *NamedVarsNode) Parse(scanner *Scanner) {
 	if scanner.Next(Split) != "{" {
 		panic("Expected block for variable declaration!")
 	}
@@ -63,45 +61,83 @@ func (node *VarNode) Parse(scanner *Scanner) {
 			break
 		}
 		name := nextToken
-		varNode := &SingleVarNode{name: name, typeName: node.typeName}
+		varNode := &SingleNamedVarNode{name: name, typeName: node.typeName}
 		node.children = append(node.children, varNode)
 		if scanner.Next(Split) != ":=" {
 			panic("Expected assignment!")
 		}
-		for {
-			nextToken = scanner.Next(Split)
-			if nextToken == ";" {
-				break
-			}
-			var childNode Node
-			if operatorFunc, isOperator := OperatorFactory[nextToken]; isOperator {
-				childNode = operatorFunc()
-			} else {
-				operandNode := parseOperand(nextToken, node.typeName)
-				childNode = operandNode
-			}
-			childNode.SetParent(varNode)
-			varNode.Add(childNode)
-		}
+		varNode.parseExpr(scanner, func(token string) bool { return token == ";" })
 		fmt.Println("Variable node:", name)
 	}
 }
 
-func parseOperand(strVal, typeName string) *OperandNode {
-	operandNode := &OperandNode{typeName: typeName}
-	if typeName == "i32" {
-		val, err := strconv.Atoi(strVal)
-		if err == nil {
-			operandNode.val = val
-			return operandNode
+func (node *BaseNode) parseExpr(scanner *Scanner, tokenBreakCond func(token string) bool) {
+	for {
+		nextToken := scanner.Next(Split)
+		if tokenBreakCond(nextToken) {
+			break
 		}
-	} else {
-		// TODO:feature parse
+		var child Node
+		if operatorFunc, isOperator := OperatorFactory[nextToken]; isOperator {
+			child = operatorFunc()
+		} else {
+			operandNode := parseOperand(scanner, nextToken)
+			child = operandNode
+		}
+		node.Add(child)
+		child.SetParent(node)
+	}
+}
+
+func getImmediatePropDef(datDef *DefDatNode, name string) *DefDatPropNode {
+	for _, child := range datDef.children {
+		propDef := child.(*DefDatPropNode)
+		if propDef.name == name {
+			return propDef
+		}
+	}
+	panic("No property found with name")
+}
+
+func parseOperand(scanner *Scanner, strVal string) *OperandNode {
+	operandNode := &OperandNode{}
+	// i32 literal
+	_, err := strconv.Atoi(strVal)
+	if err == nil {
+		operandNode.typeName = "i32"
+		operandNode.literalVal = strVal
 		return operandNode
 	}
-	// Reference to existing variable
-	operandNode.varName = strVal
+	// Data constructor
+	for _, datDef := range progNode.datDefs {
+		if strVal == datDef.name {
+			operandNode.typeName = datDef.name
+			if scanner.Next(Split) != "{" {
+				panic("Expected block for data property fills")
+			}
+			for {
+				nextToken := scanner.Next(Split)
+				if nextToken == "}" {
+					break
+				}
+				propName := nextToken
+				if scanner.Next(Split) != "=" {
+					panic("Expected assignment")
+				}
+				propDef := getImmediatePropDef(datDef, propName)
+				fillNode := &PropFill{propDef: propDef}
+				operandNode.parseAndAdd(fillNode, scanner)
+			}
+			return operandNode
+		}
+	}
+	// Accessor to existing variable
+	operandNode.accessor = strVal
 	return operandNode
+}
+
+func (node *PropFill) Parse(scanner *Scanner) {
+	node.parseExpr(scanner, func(token string) bool { return token == "," })
 }
 
 func (node *ProgNode) Parse(scanner *Scanner) {
@@ -150,7 +186,7 @@ func (node *LoopNode) Parse(scanner *Scanner) {
 		if nextToken == "}" {
 			break
 		}
-		node.parseNextChild(nextToken, scanner)
+		node.parseNextStatementNode(nextToken, scanner)
 	}
 }
 
@@ -236,7 +272,7 @@ func (node *ImplFuncNode) Parse(scanner *Scanner) {
 		if nextToken == "}" {
 			break
 		}
-		node.parseNextChild(nextToken, scanner)
+		node.parseNextStatementNode(nextToken, scanner)
 		if nextToken == "out" {
 			break
 		}
@@ -251,7 +287,7 @@ func (node *OutNode) Parse(scanner *Scanner) {
 
 func (node *DefDatNode) Parse(scanner *Scanner) {
 	node.name = scanner.Next(Split)
-	prog.datDefs[node.name] = node
+	progNode.datDefs[node.name] = node
 	fmt.Println("Data structure with name:", node.name)
 	if scanner.Next(Split) != "{" {
 		panic("Expected block in data definition!")
@@ -261,35 +297,45 @@ func (node *DefDatNode) Parse(scanner *Scanner) {
 		if nextToken == "}" {
 			break
 		}
-		node.parseAndAdd(new(DefDatPropNode), scanner)
+		typeName := nextToken
+		if scanner.Next(Split) != "{" {
+			panic("Expected block after type for property definition!")
+		}
+		for {
+			nextToken := scanner.Next(Split)
+			if nextToken == "}" {
+				break
+			}
+			defPropNode := &DefDatPropNode{typeName: typeName, name: nextToken}
+			node.children = append(node.children, defPropNode)
+			defPropNode.Parent = node
+			if scanner.Next(Split) != ";" {
+				panic("Expected semicolon to end property definition!")
+			}
+		}
 	}
 }
 
-func (node *DefDatPropNode) Parse(scanner *Scanner) {
-	// TODO:feature allow for more than just i32
-	_ = scanner.Peek(Split)
-	node.name = scanner.Next(Split)
-	fmt.Println("Property with name:", node.name)
-	if scanner.Next(Split) != ";" {
-		panic("Expected semicolon to end property definition!")
-	}
-}
-
-func (node *BaseNode) parseNextChild(nextToken string, scanner *Scanner) {
+func (node *BaseNode) parseNextStatementNode(nextToken string, scanner *Scanner) {
+	var childNode ParsableNode
 	if nodeFunc, isNode := factory[nextToken]; isNode {
-		childNode := nodeFunc()
-		node.parseAndAdd(childNode, scanner)
+		childNode = nodeFunc()
 	} else if nextToken == "i32" {
-		implVarNode := &VarNode{typeName: nextToken}
-		node.parseAndAdd(implVarNode, scanner)
-	} else if datDef, isDatDef := prog.datDefs[nextToken]; isDatDef {
-		implVarNode := &VarNode{typeName: datDef.name}
-		node.parseAndAdd(implVarNode, scanner)
+		childNode = &NamedVarsNode{typeName: nextToken}
+	} else if datDef, isDatDef := progNode.datDefs[nextToken]; isDatDef {
+		childNode = &NamedVarsNode{typeName: datDef.name}
+	} else if scanner.PeekAdvanceIf(Split, func(str string) bool { return str == "=" }) {
+		childNode = &AssignmentNode{accessor: nextToken}
 	} else {
 		callNode := &CallFuncNode{name: nextToken}
-		fmt.Println("Function Call:", callNode.name)
-		node.parseAndAdd(callNode, scanner)
+		childNode = callNode
 	}
+	node.parseAndAdd(childNode, scanner)
+}
+
+func (node *AssignmentNode) Parse(scanner *Scanner) {
+	fmt.Println("Assignment to:", node.accessor)
+	node.parseExpr(scanner, func(token string) bool { return token == ";" })
 }
 
 func (node *BaseNode) parseAndAdd(childNode ParsableNode, scanner *Scanner) {

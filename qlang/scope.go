@@ -1,43 +1,38 @@
 package main
 
-import "fmt"
-
-var anonNum = 0
+type ScopeVar struct {
+	typeName, varName string
+	stackPos          int // Relative to base pointer
+}
 
 type (
 	Scope struct {
-		vars       map[string]int
+		vars       map[Node]ScopeVar
 		Head, Base int
 		Parent     *Scope
 	}
 )
 
-func (scope *Scope) AllocVar(node Node, size int) int {
+func (scope *Scope) Alloc(size int) int {
 	scope.Head += size
-	pos := scope.Base + scope.Head
-	scope.vars[NodeName(node)] = pos
-	return pos
+	return scope.Head
 }
 
-func NodeName(node Node) string {
-	switch n := node.(type) {
-	case *SingleVarNode:
-		return n.name
-	case *OperandNode:
-		if len(n.varName) == 0 {
-			// Give the operand an anonymous name if it hasn't been set yet
-			n.varName = fmt.Sprintf("__anon%d", anonNum)
-			anonNum++
-		}
-		return n.varName
-	default:
-		panic("Can't get name for this type")
-	}
+func (scope *Scope) BindNamedVar(node *SingleNamedVarNode) ScopeVar {
+	size := getSizeOfType(node.typeName)
+	pos := scope.Alloc(size)
+	scopeVar := ScopeVar{typeName: node.typeName, varName: node.name, stackPos: pos}
+	scope.vars[node] = scopeVar
+	return scopeVar
 }
 
+func (scope *Scope) BindUnnamed(node Node, scopeVar ScopeVar) ScopeVar {
+	scope.vars[node] = scopeVar
+	return scopeVar
+}
 func NewScope(parent *Scope) *Scope {
 	newScope := &Scope{
-		vars:   make(map[string]int),
+		vars:   make(map[Node]ScopeVar),
 		Head:   0,
 		Parent: parent,
 	}
@@ -51,12 +46,4 @@ func NewScope(parent *Scope) *Scope {
 		}
 	}
 	return newScope
-}
-
-func (scope *Scope) GetVarPos(node Node) int {
-	if pos, has := scope.vars[NodeName(node)]; has {
-		return pos
-	} else {
-		panic("Scope does not contain requested anonymous variable")
-	}
 }

@@ -10,14 +10,14 @@ var (
 		"out": func() ParsableNode { return new(OutNode) },
 		"for": func() ParsableNode { return new(LoopNode) },
 	}
-	OperatorFactory = map[string]func() OperableNode{
-		"+": func() OperableNode { return new(AdditionNode) },
-		"-": func() OperableNode { return new(SubtractionNode) },
-		"*": func() OperableNode { return new(MultiplicationNode) },
-		"/": func() OperableNode { return new(DivisionNode) },
+	OperatorFactory = map[string]func() OperationalNode{
+		"+": func() OperationalNode { return new(AdditionNode) },
+		"-": func() OperationalNode { return new(SubtractionNode) },
+		"*": func() OperationalNode { return new(MultiplicationNode) },
+		"/": func() OperationalNode { return new(DivisionNode) },
 	}
 	// TODO:refactor operators are defined in two locations. Add better system for managing tokens
-	tokens = []string{";", "..", ",", "&&", "||", "{", "}", "(", ")", "->", "+", "-", "*", "/", "'", ":="}
+	tokens = []string{";", "..", ",", "&&", "||", "{", "}", "(", ")", "->", "+", "-", "*", "/", "'", ":=", "="}
 )
 
 type (
@@ -31,7 +31,7 @@ type (
 		Node
 		Parse(scanner *Scanner)
 	}
-	OperableNode interface {
+	OperationalNode interface {
 		Node
 	}
 )
@@ -88,18 +88,27 @@ type (
 		ParseNode
 		str, label string
 	}
-	VarNode struct {
+	NamedVarsNode struct {
 		ParseNode
 		typeName string
 	}
-	SingleVarNode struct {
-		ParseNode
+	SingleNamedVarNode struct {
+		ExpressionNode
 		name, typeName string
+	}
+	AssignmentNode struct {
+		ParseNode
+		accessor string // Left-hand side
 	}
 	OperandNode struct {
 		BaseNode
-		val               int
-		varName, typeName string // If variable name is empty, assume value is valid
+		typeName   string // Always
+		accessor   string // If reference to variable
+		literalVal string // If storing literal (int)
+	}
+	PropFill struct {
+		ParseNode
+		propDef *DefDatPropNode
 	}
 	OperatorNode struct {
 		ExpressionNode
@@ -122,10 +131,12 @@ type (
 	DefDatNode struct {
 		ParseNode
 		name string
+		size int
 	}
 
 	DefDatPropNode struct {
 		ParseNode
-		name string
+		name, typeName string
+		offset         int
 	}
 )

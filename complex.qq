@@ -1,0 +1,27 @@
+pkg main {
+    dat test {
+        i32 a;
+        i32 b;
+    }
+    def void -> i32 {
+        imp main {
+            i32 {
+                b := 2 + 3;
+                c := 4 + b + b;
+            }
+            test { a := {}; }
+            i_pln b;
+            for range 0..2 {
+                i_pln c;
+            }
+            i_pln a.a;
+            pln 'Hello everyone!';
+            out 0;
+        }
+    }
+    # def i32, i32 -> i32 {
+    #     imp calculate(_a, _b) {
+    #         out _a + _b;
+    #     }
+    # }
+}
