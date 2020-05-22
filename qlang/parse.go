@@ -40,13 +40,28 @@ func (node *StringLiteralNode) Parse(scanner *Scanner) {
 
 func (node *CallFuncNode) Parse(scanner *Scanner) {
 	fmt.Println("Function Call:", node.name)
-	if node.name == "pln" {
-		if token, _ := scanner.Peek(Split); token == "'" {
+	if node.name == "wln" {
+		if scanner.PeekAdvanceIf(Split, func(str string) bool {return str == "'"}) {
 			literalNode := new(StringLiteralNode)
 			node.parseAndAdd(literalNode, scanner)
+			if scanner.Next(Split) != ";" {
+				panic("Expecting semicolon to end string literal!")
+			}
 		} else {
 			node.parseExpr(scanner, func(token string) bool { return token == ";" })
 		}
+	} else if node.name == "rln" {
+		if scanner.Next(Split) != "$" {
+			panic("Expecting reference to 32-bit integer!")
+		}
+		operandNode := parseOperand(scanner, scanner.Next(Split))
+		node.children = append(node.children, operandNode)
+		operandNode.Parent = operandNode
+		if scanner.Next(Split) != ";" {
+			panic("Expecting semicolon to end function call!")
+		}
+	} else {
+		panic(fmt.Sprintf("Unrecognized function call %s", node.name))
 	}
 }
 
@@ -63,7 +78,7 @@ func (node *NamedVarsNode) Parse(scanner *Scanner) {
 		varNode := &SingleNamedVarNode{name: name, typeName: node.typeName}
 		node.children = append(node.children, varNode)
 		if scanner.Next(Split) != ":=" {
-			panic("Expected assignment!")
+			panic("Expected assignment to named variable!")
 		}
 		varNode.parseExpr(scanner, func(token string) bool { return token == ";" })
 		fmt.Println("Variable node:", name)
@@ -121,7 +136,7 @@ func parseOperand(scanner *Scanner, strVal string) *OperandNode {
 				}
 				propName := nextToken
 				if scanner.Next(Split) != "=" {
-					panic("Expected assignment")
+					panic("Expected assignment!")
 				}
 				propDef := getImmediatePropDef(datDef, propName)
 				fillNode := &PropFill{propDef: propDef}
@@ -326,8 +341,7 @@ func (node *BaseNode) parseNextStatementNode(nextToken string, scanner *Scanner)
 	} else if scanner.PeekAdvanceIf(Split, func(str string) bool { return str == "=" }) {
 		childNode = &AssignmentNode{accessor: nextToken}
 	} else {
-		callNode := &CallFuncNode{name: nextToken}
-		childNode = callNode
+		childNode = &CallFuncNode{name: nextToken}
 	}
 	node.parseAndAdd(childNode, scanner)
 }

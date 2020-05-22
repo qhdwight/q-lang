@@ -4,17 +4,25 @@ pkg main {
     }
     def void -> i32 {
         imp main {
-            i32 { c := 2; }
-            test { d := test{a=3, b=2, }; }
-            c = 3 + 2 + 3;
-            d.a = 5;
-            d.b = c + 32;
-            for range 0..3 {
-                c = c + 3;
-            }
-            pln c;
-            pln d.a;
-            pln d.b;
+            i32 { a := 0; b := 0; c := 0; }
+            wln 'Enter first number!';
+            rln $a;
+
+            wln 'Enter second number!';
+            rln $b;
+
+            wln a + b;
+
+            # test { d := test{a=3, b=2, }; }
+            # c = 3 + 2 + 3;
+            # d.a = 5;
+            # d.b = c + 32;
+            # for range 0..3 {
+            #     c = c + 3;
+            # }
+            # wln c;
+            # wln d.a;
+            # wln d.b;
             out 0;
         }
     }

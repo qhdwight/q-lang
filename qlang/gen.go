@@ -156,7 +156,7 @@ func (node *ImplFuncNode) Generate(prog *Prog) {
 	prog.CurSect.Content = append(prog.CurSect.Content,
 		"push rbp",
 		"mov rbp, rsp",
-		"sub rsp, 64",
+		"sub rsp, 1024",
 		"",
 	)
 	for _, child := range node.children {
@@ -164,7 +164,7 @@ func (node *ImplFuncNode) Generate(prog *Prog) {
 	}
 	prog.CurSect.Content = append(prog.CurSect.Content,
 		"",
-		"add rsp, 64",
+		"add rsp, 1024",
 		"pop rbp",
 		"ret",
 	)
@@ -218,7 +218,7 @@ func (node *LoopNode) Generate(prog *Prog) {
 }
 
 func (node *CallFuncNode) Generate(prog *Prog) {
-	if node.name == "pln" {
+	if node.name == "wln" {
 		if strNode, isStr := node.children[0].(*StringLiteralNode); isStr {
 			strNode.Generate(prog)
 			prog.CurSect.Content = append(prog.CurSect.Content,
@@ -234,14 +234,7 @@ func (node *CallFuncNode) Generate(prog *Prog) {
 			operandPos := node.genExpr(prog).stackPos
 			bufferPos := prog.Scope.Alloc(16)
 			// Algorithm in C: https://gcc.godbolt.org/z/3b2P5j
-			needsLibrary := true
-			for _, subSect := range prog.LibrarySubSect.SubSects {
-				if subSect.Label == "charLoop" {
-					needsLibrary = false
-					break
-				}
-			}
-			if needsLibrary {
+			if !libraryLabelExists(prog, "charLoop") {
 				prog.LibrarySubSect.SubSects = append(prog.LibrarySubSect.SubSects, &Sect{
 					Label: "digitToChar",
 					Content: []string{
@@ -254,7 +247,7 @@ func (node *CallFuncNode) Generate(prog *Prog) {
 				})
 				prog.LibrarySubSect.SubSects = append(prog.LibrarySubSect.SubSects, &Sect{
 					Label: "charLoop",
-					Content: []string{ // i32: edi, char[]: rsi
+					Content: []string{ // i32: edi, u8[]: rsi
 						"movsxd rax, edi", // Cast signed 32 bit to unsigned 64 bit
 						"mul r8",
 						"shr rdx, 3", // Shift three right
@@ -280,12 +273,60 @@ func (node *CallFuncNode) Generate(prog *Prog) {
 				"call _digitToChar",
 				// fmt.Sprintf("lea rsi, [rbp - %d]", bufferPos),
 				"mov rdx, r9 # Size",
-				"mov rax, 1 # Write",
-				"mov rdi, 1 # Standard output",
+				"mov rax, 1 # Write system call identifier",
+				"mov rdi, 1 # Standard output file descriptor",
 				"syscall", // edi already set earlier
 			)
 		}
+	} else if node.name == "rln" {
+		// https://godbolt.org/z/qKpeBB
+		bufferPos := prog.Scope.Alloc(16)
+		i32Ref := genOperandVar(prog, node.children[0].(*OperandNode))
+		if !libraryLabelExists(prog, "asciiToInt32") {
+			prog.LibrarySubSect.SubSects = append(prog.LibrarySubSect.SubSects, &Sect{
+				Label: "asciiToInt32",
+				Content: []string{
+					"xor edx, edx",
+					"xor eax, eax",
+					"dec esi",
+					"_whileBody:",
+					"cmp esi, edx",
+					"jle _whileEnd",
+					"imul eax, eax, 10",
+					"movsx ecx, byte ptr [rdi+rdx]",
+					"inc rdx",
+					"lea eax, [rax-48+rcx]",
+					"jmp _whileBody",
+					"_whileEnd:",
+					"ret",
+				},
+			})
+		}
+		prog.CurSect.Content = append(prog.CurSect.Content,
+			fmt.Sprintf("lea rsi, [rbp - %d] # Pointer to ASCII buffer", bufferPos),
+			fmt.Sprintf("mov rdx, %d # Size", 16),
+			"mov rax, 0 # Read system call identifier",
+			"mov rdi, 0 # Standard input file descriptor",
+			"syscall",
+
+			"mov esi, eax # Length of characters",
+			fmt.Sprintf("lea rdi, [rbp - %d] # Pointer to ASCII buffer", bufferPos),
+			"call _asciiToInt32",
+
+			fmt.Sprintf("mov dword ptr [rbp - %d], eax", i32Ref.stackPos),
+		)
 	}
+}
+
+func libraryLabelExists(prog *Prog, labelName string) bool {
+	has := false
+	for _, subSect := range prog.LibrarySubSect.SubSects {
+		if subSect.Label == labelName {
+			has = true
+			break
+		}
+	}
+	return has
 }
 
 func (node *ProgNode) Generate(prog *Prog) {

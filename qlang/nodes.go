@@ -17,7 +17,7 @@ var (
 		"/": func() OperationalNode { return new(DivisionNode) },
 	}
 	// TODO:refactor operators are defined in two locations. Add better system for managing tokens
-	tokens = []string{";", "..", ",", "&&", "||", "{", "}", "(", ")", "->", "+", "-", "*", "/", "'", ":=", "="}
+	tokens = []string{";", "..", ",", "&&", "||", "{", "}", "(", ")", "->", "+", "-", "*", "/", "'", ":=", "=", "$"}
 )
 
 type (
