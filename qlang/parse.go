@@ -178,20 +178,12 @@ func (node *LoopNode) Parse(scanner *Scanner) {
 	if scanner.Next(Split) != "range" {
 		panic("Expected range")
 	}
-	start, err := strconv.Atoi(scanner.Next(Split))
-	node.start = start
-	if err != nil {
-		panic(err)
-	}
+	node.start = parseOperand(scanner, scanner.Next(Split))
 	if scanner.Next(Split) != ".." {
 		panic("Expected comma")
 	}
-	end, err := strconv.Atoi(scanner.Next(Split))
-	node.end = end
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Loops with range", start, "to", end)
+	node.end = parseOperand(scanner, scanner.Next(Split))
+	fmt.Println("Loop")
 	if scanner.Next(Split) != "{" {
 		panic("Expected block")
 	}

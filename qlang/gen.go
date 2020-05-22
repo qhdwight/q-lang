@@ -86,10 +86,16 @@ func genStackCopy(prog *Prog, src, dst ScopeVar) {
 	size := getSizeOfType(dst.typeName)
 	prog.CurSect.Content = append(prog.CurSect.Content, fmt.Sprintf("# Copy %+v to %+v", src, dst))
 	// TODO:performance use memory copy equivalent
-	for i := 0; i < size; i++ {
+	// for i := 0; i < size; i++ {
+	// 	prog.CurSect.Content = append(prog.CurSect.Content,
+	// 		fmt.Sprintf("mov dl, byte ptr [rbp - %d]", src.stackPos-i),
+	// 		fmt.Sprintf("mov byte ptr [rbp - %d], dl", dst.stackPos-i),
+	// 	)
+	// }
+	for i := 0; i < size; i+=4 {
 		prog.CurSect.Content = append(prog.CurSect.Content,
-			fmt.Sprintf("mov dl, byte ptr [rbp - %d]", src.stackPos-i),
-			fmt.Sprintf("mov byte ptr [rbp - %d], dl", dst.stackPos-i),
+			fmt.Sprintf("mov edx, dword ptr [rbp - %d]", src.stackPos-i),
+			fmt.Sprintf("mov dword ptr [rbp - %d], edx", dst.stackPos-i),
 		)
 	}
 }
@@ -188,15 +194,18 @@ func (node *StringLiteralNode) Generate(prog *Prog) {
 }
 
 func (node *LoopNode) Generate(prog *Prog) {
+	startVar, endVar := genOperandVar(prog, node.start), genOperandVar(prog, node.end)
 	loopLabelNum++
 	prog.Scope = NewScope(prog.Scope)
 	counterPos := prog.Scope.Alloc(4)
 	prog.CurSect.Content = append(prog.CurSect.Content,
-		fmt.Sprintf("mov dword ptr [rbp - %d], %d # Counter", counterPos, node.start),
+		fmt.Sprintf("mov eax, dword ptr [rbp - %d]", startVar.stackPos),
+		fmt.Sprintf("mov dword ptr [rbp - %d], eax # Counter", counterPos),
 	)
 	prog.CurSect.Content = append(prog.CurSect.Content,
 		fmt.Sprintf("_loopCheck%d:", loopLabelNum),
-		fmt.Sprintf("cmp dword ptr [rbp - %d], %d", counterPos, node.end),
+		fmt.Sprintf("mov eax, dword ptr [rbp - %d]", counterPos),
+		fmt.Sprintf("cmp eax, dword ptr [rbp - %d]", endVar.stackPos),
 		fmt.Sprintf("jge _loopContinue%d", loopLabelNum),
 		fmt.Sprintf("jmp _loopBody%d", loopLabelNum),
 	)
@@ -338,18 +347,22 @@ func (node *IfNode) Generate(prog *Prog) {
 		fmt.Sprintf("cmp eax, dword ptr [rbp - %d]", v2.stackPos),
 		fmt.Sprintf("jne _iff%d", falseLabelNum),
 	)
+	prog.Scope = NewScope(prog.Scope)
 	for _, child := range node.t.children {
 		child.Generate(prog)
 	}
+	prog.Scope = prog.Scope.Parent
 	ifLabelNum++
 	escapeLabelNum := ifLabelNum
 	prog.CurSect.Content = append(prog.CurSect.Content,
 		fmt.Sprintf("jmp _iff%d", escapeLabelNum),
 		fmt.Sprintf("_iff%d:", falseLabelNum),
 	)
+	prog.Scope = NewScope(prog.Scope)
 	for _, child := range node.f.children {
 		child.Generate(prog)
 	}
+	prog.Scope = prog.Scope.Parent
 	prog.CurSect.Content = append(prog.CurSect.Content, fmt.Sprintf("_iff%d:", escapeLabelNum))
 }
 

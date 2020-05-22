@@ -53,64 +53,23 @@ main:
     
     mov dword ptr [rbp - 8], 0 # Integer literal
     # Copy {typeName:i32 varName: stackPos:8} to {typeName:i32 varName: stackPos:12}
-    mov dl, byte ptr [rbp - 8]
-    mov byte ptr [rbp - 12], dl
-    mov dl, byte ptr [rbp - 7]
-    mov byte ptr [rbp - 11], dl
-    mov dl, byte ptr [rbp - 6]
-    mov byte ptr [rbp - 10], dl
-    mov dl, byte ptr [rbp - 5]
-    mov byte ptr [rbp - 9], dl
+    mov edx, dword ptr [rbp - 8]
+    mov dword ptr [rbp - 12], edx
     # Expression base {typeName:i32 varName: stackPos:12}
-    # Copy {typeName:i32 varName: stackPos:12} to {typeName:i32 varName:a stackPos:4}
-    mov dl, byte ptr [rbp - 12]
-    mov byte ptr [rbp - 4], dl
-    mov dl, byte ptr [rbp - 11]
-    mov byte ptr [rbp - 3], dl
-    mov dl, byte ptr [rbp - 10]
-    mov byte ptr [rbp - 2], dl
-    mov dl, byte ptr [rbp - 9]
-    mov byte ptr [rbp - 1], dl
-    mov dword ptr [rbp - 12], 0 # Integer literal
-    # Copy {typeName:i32 varName: stackPos:12} to {typeName:i32 varName: stackPos:16}
-    mov dl, byte ptr [rbp - 12]
-    mov byte ptr [rbp - 16], dl
-    mov dl, byte ptr [rbp - 11]
-    mov byte ptr [rbp - 15], dl
-    mov dl, byte ptr [rbp - 10]
-    mov byte ptr [rbp - 14], dl
-    mov dl, byte ptr [rbp - 9]
-    mov byte ptr [rbp - 13], dl
-    # Expression base {typeName:i32 varName: stackPos:16}
-    # Copy {typeName:i32 varName: stackPos:16} to {typeName:i32 varName:b stackPos:8}
-    mov dl, byte ptr [rbp - 16]
-    mov byte ptr [rbp - 8], dl
-    mov dl, byte ptr [rbp - 15]
-    mov byte ptr [rbp - 7], dl
-    mov dl, byte ptr [rbp - 14]
-    mov byte ptr [rbp - 6], dl
-    mov dl, byte ptr [rbp - 13]
-    mov byte ptr [rbp - 5], dl
-    mov dword ptr [rbp - 16], 0 # Integer literal
-    # Copy {typeName:i32 varName: stackPos:16} to {typeName:i32 varName: stackPos:20}
-    mov dl, byte ptr [rbp - 16]
-    mov byte ptr [rbp - 20], dl
-    mov dl, byte ptr [rbp - 15]
-    mov byte ptr [rbp - 19], dl
-    mov dl, byte ptr [rbp - 14]
-    mov byte ptr [rbp - 18], dl
-    mov dl, byte ptr [rbp - 13]
-    mov byte ptr [rbp - 17], dl
-    # Expression base {typeName:i32 varName: stackPos:20}
-    # Copy {typeName:i32 varName: stackPos:20} to {typeName:i32 varName:c stackPos:12}
-    mov dl, byte ptr [rbp - 20]
-    mov byte ptr [rbp - 12], dl
-    mov dl, byte ptr [rbp - 19]
-    mov byte ptr [rbp - 11], dl
-    mov dl, byte ptr [rbp - 18]
-    mov byte ptr [rbp - 10], dl
-    mov dl, byte ptr [rbp - 17]
-    mov byte ptr [rbp - 9], dl
+    # Copy {typeName:i32 varName: stackPos:12} to {typeName:i32 varName:c stackPos:4}
+    mov edx, dword ptr [rbp - 12]
+    mov dword ptr [rbp - 4], edx
+    # Copy {typeName:test varName: stackPos:20} to {typeName:test varName: stackPos:28}
+    mov edx, dword ptr [rbp - 20]
+    mov dword ptr [rbp - 28], edx
+    mov edx, dword ptr [rbp - 16]
+    mov dword ptr [rbp - 24], edx
+    # Expression base {typeName:test varName: stackPos:28}
+    # Copy {typeName:test varName: stackPos:28} to {typeName:test varName:z stackPos:12}
+    mov edx, dword ptr [rbp - 28]
+    mov dword ptr [rbp - 12], edx
+    mov edx, dword ptr [rbp - 24]
+    mov dword ptr [rbp - 8], edx
     lea rax, [rip + _string1]
     mov rsi, rax # Pointer to string
     mov rdx, 20 # Size
@@ -125,7 +84,7 @@ main:
     mov esi, eax # Length of characters
     lea rdi, [rbp - 28] # Pointer to ASCII buffer
     call _asciiToInt32
-    mov dword ptr [rbp - 4], eax
+    mov dword ptr [rbp - 12], eax
     lea rax, [rip + _string2]
     mov rsi, rax # Pointer to string
     mov rdx, 21 # Size
@@ -141,37 +100,19 @@ main:
     lea rdi, [rbp - 44] # Pointer to ASCII buffer
     call _asciiToInt32
     mov dword ptr [rbp - 8], eax
-    # Copy {typeName:i32 varName:a stackPos:4} to {typeName:i32 varName: stackPos:48}
-    mov dl, byte ptr [rbp - 4]
-    mov byte ptr [rbp - 48], dl
-    mov dl, byte ptr [rbp - 3]
-    mov byte ptr [rbp - 47], dl
-    mov dl, byte ptr [rbp - 2]
-    mov byte ptr [rbp - 46], dl
-    mov dl, byte ptr [rbp - 1]
-    mov byte ptr [rbp - 45], dl
+    # Copy {typeName:i32 varName: stackPos:12} to {typeName:i32 varName: stackPos:48}
+    mov edx, dword ptr [rbp - 12]
+    mov dword ptr [rbp - 48], edx
     # Expression base {typeName:i32 varName: stackPos:48}
     mov eax, dword ptr [rbp - 48]
     add eax, dword ptr [rbp - 8]
     mov dword ptr [rbp - 48], eax
-    # Copy {typeName:i32 varName: stackPos:48} to {typeName:i32 varName:c stackPos:12}
-    mov dl, byte ptr [rbp - 48]
-    mov byte ptr [rbp - 12], dl
-    mov dl, byte ptr [rbp - 47]
-    mov byte ptr [rbp - 11], dl
-    mov dl, byte ptr [rbp - 46]
-    mov byte ptr [rbp - 10], dl
-    mov dl, byte ptr [rbp - 45]
-    mov byte ptr [rbp - 9], dl
-    # Copy {typeName:i32 varName:c stackPos:12} to {typeName:i32 varName: stackPos:48}
-    mov dl, byte ptr [rbp - 12]
-    mov byte ptr [rbp - 48], dl
-    mov dl, byte ptr [rbp - 11]
-    mov byte ptr [rbp - 47], dl
-    mov dl, byte ptr [rbp - 10]
-    mov byte ptr [rbp - 46], dl
-    mov dl, byte ptr [rbp - 9]
-    mov byte ptr [rbp - 45], dl
+    # Copy {typeName:i32 varName: stackPos:48} to {typeName:i32 varName:c stackPos:4}
+    mov edx, dword ptr [rbp - 48]
+    mov dword ptr [rbp - 4], edx
+    # Copy {typeName:i32 varName:c stackPos:4} to {typeName:i32 varName: stackPos:48}
+    mov edx, dword ptr [rbp - 4]
+    mov dword ptr [rbp - 48], edx
     # Expression base {typeName:i32 varName: stackPos:48}
     mov edi, dword ptr [rbp - 48] # Integer argument
     lea rsi, [rbp - 48] # Buffer pointer argument
@@ -181,15 +122,28 @@ main:
     mov rdi, 1 # Standard output file descriptor
     syscall
     mov dword ptr [rbp - 48], 25 # Integer literal
-    mov eax, dword ptr [rbp - 12]
+    mov eax, dword ptr [rbp - 4]
     cmp eax, dword ptr [rbp - 48]
     jne _iff0
+    mov eax, dword ptr [rbp - 12]
+    mov dword ptr [rbp - 52], eax # Counter
+    _loopCheck1:
+    mov eax, dword ptr [rbp - 52]
+    cmp eax, dword ptr [rbp - 8]
+    jge _loopContinue1
+    jmp _loopBody1
+    _loopBody1:
     lea rax, [rip + _string3]
     mov rsi, rax # Pointer to string
     mov rdx, 8 # Size
     mov rax, 1 # Write
     mov rdi, 1 # Standard output
     syscall
+    mov eax, dword ptr [rbp - 52]
+    inc eax
+    mov dword ptr [rbp - 52], eax
+    jmp _loopCheck1
+    _loopContinue1:
     jmp _iff1
     _iff0:
     lea rax, [rip + _string4]

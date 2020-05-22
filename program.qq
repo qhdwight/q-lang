@@ -4,18 +4,21 @@ pkg main {
     }
     def void -> i32 {
         imp main {
-            i32 { a := 0; b := 0; c := 0; }
+            i32 { c := 0; }
+            test { z := test{}; }
             wln 'Enter first number!';
-            rln $a;
+            rln $z.a;
 
             wln 'Enter second number!';
-            rln $b;
+            rln $z.b;
 
-            c = a + b;
+            c = z.a + z.b;
             wln c;
 
             iff c = 25 {
-                wln 'Secret!';
+                for range z.a..z.b {
+                    wln 'Secret!';
+                }
             } els {
                 wln 'No secret!';
             }

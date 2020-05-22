@@ -59,7 +59,7 @@ type (
 	}
 	LoopNode struct {
 		ParseNode
-		start, end int
+		start, end *OperandNode
 	}
 	ProgNode struct {
 		ParseNode
