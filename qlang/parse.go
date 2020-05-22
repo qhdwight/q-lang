@@ -41,7 +41,7 @@ func (node *StringLiteralNode) Parse(scanner *Scanner) {
 func (node *CallFuncNode) Parse(scanner *Scanner) {
 	fmt.Println("Function Call:", node.name)
 	if node.name == "wln" {
-		if scanner.PeekAdvanceIf(Split, func(str string) bool {return str == "'"}) {
+		if scanner.PeekAdvanceIf(Split, func(str string) bool { return str == "'" }) {
 			literalNode := new(StringLiteralNode)
 			node.parseAndAdd(literalNode, scanner)
 			if scanner.Next(Split) != ";" {
@@ -330,6 +330,7 @@ func (node *DefDatNode) Parse(scanner *Scanner) {
 	}
 }
 
+// TODO:refactor remove next token and use peek instead
 func (node *BaseNode) parseNextStatementNode(nextToken string, scanner *Scanner) {
 	var childNode ParsableNode
 	if nodeFunc, isNode := factory[nextToken]; isNode {
@@ -344,6 +345,38 @@ func (node *BaseNode) parseNextStatementNode(nextToken string, scanner *Scanner)
 		childNode = &CallFuncNode{name: nextToken}
 	}
 	node.parseAndAdd(childNode, scanner)
+}
+
+func (node *IfNode) Parse(scanner *Scanner) {
+	node.o1 = parseOperand(scanner, scanner.Next(Split))
+	if scanner.Next(Split) != "=" {
+		panic("Expected comparison!")
+	}
+	node.o2 = parseOperand(scanner, scanner.Next(Split))
+	if scanner.Next(Split) != "{" {
+		panic("Expected block for if statement!")
+	}
+	node.t, node.f = new(BaseNode), new(BaseNode)
+	for {
+		nextToken := scanner.Next(Split)
+		if nextToken == "}" {
+			break
+		}
+		node.t.parseNextStatementNode(nextToken, scanner)
+	}
+	if !scanner.PeekAdvanceIf(Split, func(str string) bool { return str == "els" }) {
+		return
+	}
+	if scanner.Next(Split) != "{" {
+		panic("Expected block for else statement!")
+	}
+	for {
+		nextToken := scanner.Next(Split)
+		if nextToken == "}" {
+			break
+		}
+		node.f.parseNextStatementNode(nextToken, scanner)
+	}
 }
 
 func (node *AssignmentNode) Parse(scanner *Scanner) {

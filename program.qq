@@ -11,7 +11,14 @@ pkg main {
             wln 'Enter second number!';
             rln $b;
 
-            wln a + b;
+            c = a + b;
+            wln c;
+
+            iff c = 25 {
+                wln 'Secret!';
+            } els {
+                wln 'No secret!';
+            }
 
             # test { d := test{a=3, b=2, }; }
             # c = 3 + 2 + 3;

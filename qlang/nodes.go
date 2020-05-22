@@ -3,6 +3,7 @@ package main
 var (
 	// Allows us to take q-lang code, which is raw text, and convert it into a node-based Go representation
 	factory = map[string]func() ParsableNode{
+		"iff": func() ParsableNode { return new(IfNode) },
 		"pkg": func() ParsableNode { return new(PckgNode) },
 		"def": func() ParsableNode { return new(DefineFuncNode) },
 		"imp": func() ParsableNode { return new(ImplFuncNode) },
@@ -17,7 +18,7 @@ var (
 		"/": func() OperationalNode { return new(DivisionNode) },
 	}
 	// TODO:refactor operators are defined in two locations. Add better system for managing tokens
-	tokens = []string{";", "..", ",", "&&", "||", "{", "}", "(", ")", "->", "+", "-", "*", "/", "'", ":=", "=", "$"}
+	tokens = []string{";", "..", ",", "&&", "||", "{", "}", "(", ")", "->", "+", "-", "*", "/", "'", ":=", "=", "$", "&"}
 )
 
 type (
@@ -126,7 +127,15 @@ type (
 		OperatorNode
 	}
 
-	/* ===== ECS ====== */
+	/* Control flow */
+
+	IfNode struct {
+		ParseNode
+		o1, o2 *OperandNode
+		t, f   *BaseNode
+	}
+
+	/* Data system */
 
 	DefDatNode struct {
 		ParseNode

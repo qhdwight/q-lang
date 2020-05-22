@@ -3,6 +3,10 @@ _string1:
     .string "Enter first number!\n"
 _string2:
     .string "Enter second number!\n"
+_string3:
+    .string "Secret!\n"
+_string4:
+    .string "No secret!\n"
 .text
 .intel_syntax noprefix
 .globl main
@@ -150,6 +154,25 @@ main:
     mov eax, dword ptr [rbp - 48]
     add eax, dword ptr [rbp - 8]
     mov dword ptr [rbp - 48], eax
+    # Copy {typeName:i32 varName: stackPos:48} to {typeName:i32 varName:c stackPos:12}
+    mov dl, byte ptr [rbp - 48]
+    mov byte ptr [rbp - 12], dl
+    mov dl, byte ptr [rbp - 47]
+    mov byte ptr [rbp - 11], dl
+    mov dl, byte ptr [rbp - 46]
+    mov byte ptr [rbp - 10], dl
+    mov dl, byte ptr [rbp - 45]
+    mov byte ptr [rbp - 9], dl
+    # Copy {typeName:i32 varName:c stackPos:12} to {typeName:i32 varName: stackPos:48}
+    mov dl, byte ptr [rbp - 12]
+    mov byte ptr [rbp - 48], dl
+    mov dl, byte ptr [rbp - 11]
+    mov byte ptr [rbp - 47], dl
+    mov dl, byte ptr [rbp - 10]
+    mov byte ptr [rbp - 46], dl
+    mov dl, byte ptr [rbp - 9]
+    mov byte ptr [rbp - 45], dl
+    # Expression base {typeName:i32 varName: stackPos:48}
     mov edi, dword ptr [rbp - 48] # Integer argument
     lea rsi, [rbp - 48] # Buffer pointer argument
     call _digitToChar
@@ -157,6 +180,25 @@ main:
     mov rax, 1 # Write system call identifier
     mov rdi, 1 # Standard output file descriptor
     syscall
+    mov dword ptr [rbp - 48], 25 # Integer literal
+    mov eax, dword ptr [rbp - 12]
+    cmp eax, dword ptr [rbp - 48]
+    jne _iff0
+    lea rax, [rip + _string3]
+    mov rsi, rax # Pointer to string
+    mov rdx, 8 # Size
+    mov rax, 1 # Write
+    mov rdi, 1 # Standard output
+    syscall
+    jmp _iff1
+    _iff0:
+    lea rax, [rip + _string4]
+    mov rsi, rax # Pointer to string
+    mov rdx, 11 # Size
+    mov rax, 1 # Write
+    mov rdi, 1 # Standard output
+    syscall
+    _iff1:
     mov eax, 0
     
     add rsp, 1024

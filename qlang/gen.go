@@ -9,6 +9,7 @@ import (
 var (
 	strLabelNum  = 0
 	loopLabelNum = 0
+	ifLabelNum   = 0
 )
 
 func getPropDef(datDef *DefDatNode, split []string) *DefDatPropNode {
@@ -327,6 +328,29 @@ func libraryLabelExists(prog *Prog, labelName string) bool {
 		}
 	}
 	return has
+}
+
+func (node *IfNode) Generate(prog *Prog) {
+	v1, v2 := genOperandVar(prog, node.o1), genOperandVar(prog, node.o2)
+	falseLabelNum := ifLabelNum
+	prog.CurSect.Content = append(prog.CurSect.Content,
+		fmt.Sprintf("mov eax, dword ptr [rbp - %d]", v1.stackPos),
+		fmt.Sprintf("cmp eax, dword ptr [rbp - %d]", v2.stackPos),
+		fmt.Sprintf("jne _iff%d", falseLabelNum),
+	)
+	for _, child := range node.t.children {
+		child.Generate(prog)
+	}
+	ifLabelNum++
+	escapeLabelNum := ifLabelNum
+	prog.CurSect.Content = append(prog.CurSect.Content,
+		fmt.Sprintf("jmp _iff%d", escapeLabelNum),
+		fmt.Sprintf("_iff%d:", falseLabelNum),
+	)
+	for _, child := range node.f.children {
+		child.Generate(prog)
+	}
+	prog.CurSect.Content = append(prog.CurSect.Content, fmt.Sprintf("_iff%d:", escapeLabelNum))
 }
 
 func (node *ProgNode) Generate(prog *Prog) {
