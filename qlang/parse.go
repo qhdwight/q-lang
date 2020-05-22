@@ -41,14 +41,13 @@ func (node *StringLiteralNode) Parse(scanner *Scanner) {
 func (node *CallFuncNode) Parse(scanner *Scanner) {
 	fmt.Println("Function Call:", node.name)
 	if node.name == "pln" {
-		if scanner.Next(Split) != "'" {
-			panic("Expected string literal!")
+		if token, _ := scanner.Peek(Split); token == "'" {
+			literalNode := new(StringLiteralNode)
+			node.parseAndAdd(literalNode, scanner)
+		} else {
+			node.parseExpr(scanner, func(token string) bool { return token == ";" })
 		}
-		literalNode := new(StringLiteralNode)
-		node.parseAndAdd(literalNode, scanner)
-		return
 	}
-	node.parseExpr(scanner, func(token string) bool { return token == ";" })
 }
 
 func (node *NamedVarsNode) Parse(scanner *Scanner) {

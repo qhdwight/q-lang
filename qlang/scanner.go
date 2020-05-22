@@ -32,7 +32,7 @@ func (scanner *Scanner) Peek(tokenFunc func(str string) (string, int)) (string, 
 	return token, skip
 }
 
-func (scanner *Scanner) PeekAdvanceIf(tokenFunc func(str string) (string, int), skipCond func (str string) bool) bool {
+func (scanner *Scanner) PeekAdvanceIf(tokenFunc func(str string) (string, int), skipCond func(str string) bool) bool {
 	peek, skip := scanner.Peek(tokenFunc)
 	if skipCond(peek) {
 		scanner.index += skip

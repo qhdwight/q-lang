@@ -193,6 +193,40 @@ main:
     mov byte ptr [rbp - 6], dl
     mov dl, byte ptr [rbp - 13]
     mov byte ptr [rbp - 5], dl
+    mov dword ptr [rbp - 16], 0 # Counter
+    _loopCheck1:
+    cmp dword ptr [rbp - 16], 3
+    jge _loopContinue1
+    jmp _loopBody1
+    _loopBody1:
+    # Copy {typeName:i32 varName:c stackPos:4} to {typeName:i32 varName: stackPos:20}
+    mov dl, byte ptr [rbp - 4]
+    mov byte ptr [rbp - 20], dl
+    mov dl, byte ptr [rbp - 3]
+    mov byte ptr [rbp - 19], dl
+    mov dl, byte ptr [rbp - 2]
+    mov byte ptr [rbp - 18], dl
+    mov dl, byte ptr [rbp - 1]
+    mov byte ptr [rbp - 17], dl
+    # Expression base {typeName:i32 varName: stackPos:20}
+    mov eax, dword ptr [rbp - 20]
+    mov dword ptr [rbp - 24], 3 # Integer literal
+    add eax, dword ptr [rbp - 24]
+    mov dword ptr [rbp - 20], eax
+    # Copy {typeName:i32 varName: stackPos:20} to {typeName:i32 varName:c stackPos:4}
+    mov dl, byte ptr [rbp - 20]
+    mov byte ptr [rbp - 4], dl
+    mov dl, byte ptr [rbp - 19]
+    mov byte ptr [rbp - 3], dl
+    mov dl, byte ptr [rbp - 18]
+    mov byte ptr [rbp - 2], dl
+    mov dl, byte ptr [rbp - 17]
+    mov byte ptr [rbp - 1], dl
+    mov eax, dword ptr [rbp - 16]
+    inc eax
+    mov dword ptr [rbp - 16], eax
+    jmp _loopCheck1
+    _loopContinue1:
     # Copy {typeName:i32 varName:c stackPos:4} to {typeName:i32 varName: stackPos:16}
     mov dl, byte ptr [rbp - 4]
     mov byte ptr [rbp - 16], dl
