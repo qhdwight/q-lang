@@ -9,11 +9,11 @@ var (
 	factory = map[string]func() ParsableNode{
 		ifKeyword: func() ParsableNode { return new(IfNode) },
 		"pkg":     func() ParsableNode { return new(PckgNode) },
-		"def":     func() ParsableNode { return new(DefineFuncNode) },
+		"def":     func() ParsableNode { return new(DefFuncNode) },
 		"imp":     func() ParsableNode { return new(ImplFuncNode) },
 		"dat":     func() ParsableNode { return new(DefDatNode) },
 		"out":     func() ParsableNode { return new(OutNode) },
-		"for":     func() ParsableNode { return new(LoopNode) },
+		"itr":     func() ParsableNode { return new(LoopNode) },
 	}
 	OperatorFactory = map[string]func() OperationalNode{
 		"+": func() OperationalNode { return new(AddNode) },
@@ -22,7 +22,7 @@ var (
 		"/": func() OperationalNode { return new(DivisionNode) },
 	}
 	// TODO:refactor operators are defined in two locations. Add better system for managing tokens
-	tokens = []string{endKeyword, "..", ",", "&&", "||", "{", "}", "(", ")", "->", "+", "-", "*", "/", "'", assignKeyword, "$", "&"}
+	tokens = []string{endKeyword, rangeKeyword, delimKeyword, "&&", "||", "{", "}", "(", ")", "->", "+", "-", "*", "/", "'", assignKeyword, "$", "&"}
 )
 
 type (
@@ -67,8 +67,9 @@ type (
 	}
 	ProgNode struct {
 		ParseNode
-		pckgName string
-		datDefs  map[string]*DefDatNode
+		pckgName  string
+		datDefs   map[string]*DefDatNode
+		funcImpls map[string]*ImplFuncNode
 	}
 	PckgNode struct {
 		ParseNode
@@ -76,15 +77,20 @@ type (
 	ParseNode struct {
 		BaseNode
 	}
-	DefineFuncNode struct {
+	DefFuncNode struct {
 		ParseNode
+		parameterTypes []string
+		retType        string
 	}
 	ImplFuncNode struct {
 		ParseNode
+		name           string
+		parameterNames []string
 	}
 	CallFuncNode struct {
 		ParseNode
-		name string
+		name   string
+		retVar ScopeVar
 	}
 	OutNode struct {
 		ParseNode

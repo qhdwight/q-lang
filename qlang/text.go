@@ -14,7 +14,6 @@ type (
 	Prog struct {
 		ConstSect, FuncSect *Sect
 		LibrarySubSect      *Sect
-		MainSubSect         *Sect
 		CurSect             *Sect
 		Scope               *Scope
 	}
@@ -30,12 +29,8 @@ func NewProg() *Prog {
 		},
 	}
 	prog.LibrarySubSect = new(Sect)
-	prog.MainSubSect = &Sect{
-		Label: "main",
-	}
-	prog.FuncSect.SubSects = append(prog.FuncSect.SubSects, prog.LibrarySubSect, prog.MainSubSect)
+	prog.FuncSect.SubSects = append(prog.FuncSect.SubSects, prog.LibrarySubSect)
 	prog.Scope = NewScope(nil)
-	prog.CurSect = prog.MainSubSect
 	return prog
 }
 

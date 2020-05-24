@@ -2,26 +2,31 @@ pkg main {
     dat inputs_d {
         u32 { a; b; }
     }
-    def void -> u32 {
+    def u32, u32 -> u32 {
+        imp calculate a,b {
+            out a + b;
+        }
+    }
+    def nil -> u32 {
         imp main {
-            u32 { c; }
-            inputs_d { i <- inputs_d{}; }
+            inputs_d { i <- ?; }
             wln 'Enter first number!';
             rln $i.a;
 
             wln 'Enter second number!';
             rln $i.b;
 
-            c <- i.a + i.b;
+            u32 { c <- calculate i.a, i.b; }
             wln c;
 
             iff c = 25 {
-                for i.a..i.b {
+                itr i.a...i.b {
                     wln 'Secret!';
                 }
             } els {
                 wln 'No secret!';
             }
+            out 0;
         }
     }
 }

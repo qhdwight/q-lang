@@ -1,0 +1,18 @@
+pkg main {
+    dat test_d {
+        u32 { a; b; }
+    }
+    def test_d -> u32 {
+        imp calculate t {
+            wln t.a;
+            out 0;
+        }
+    }
+    def nil -> u32 {
+        imp main {
+            test_d { t <- test_d{a <- 1; b <- 2; }; }
+            calculate t;
+            out 0;
+        }
+    }
+}

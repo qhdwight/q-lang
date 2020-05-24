@@ -21,6 +21,10 @@ func (scanner *Scanner) Skip(tokenFunc func(str string) (string, int)) {
 	scanner.Next(tokenFunc)
 }
 
+func (scanner *Scanner) SkipBy(amount int) {
+	scanner.index += amount
+}
+
 func (scanner *Scanner) Next(tokenFunc func(str string) (string, int)) string {
 	token, skip := scanner.peek(tokenFunc)
 	scanner.index += skip

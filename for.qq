@@ -1,7 +1,7 @@
 pkg main {
-    def void -> u32 {
+    def nil -> u32 {
         imp main {
-            for 0..3 {
+            itr 0...3 {
                 wln 'Hello world!';
             }
         }

@@ -17,10 +17,12 @@ const (
 	uintKeyword   = "u32"
 	assignKeyword = "<-"
 	endKeyword    = ";"
+	rangeKeyword  = "..."
+	delimKeyword  = ","
 )
 
 func getProg(code string) *ProgNode {
-	progNode = &ProgNode{datDefs: make(map[string]*DefDatNode)}
+	progNode = &ProgNode{datDefs: map[string]*DefDatNode{}, funcImpls: map[string]*ImplFuncNode{}}
 	progNode.Parse(NewScanner(code))
 	return progNode
 }
@@ -36,7 +38,7 @@ func Parse(fileName string) *ProgNode {
 
 func (node *ParseNode) Parse(scanner *Scanner) {
 	nodeName := scanner.Next(Split)
-	node.parseNextStatementNode(nodeName, scanner)
+	parseNextStatementNode(nodeName, node, scanner)
 }
 
 func (node *StringLiteralNode) Parse(scanner *Scanner) {
@@ -46,17 +48,19 @@ func (node *StringLiteralNode) Parse(scanner *Scanner) {
 
 func (node *CallFuncNode) Parse(scanner *Scanner) {
 	fmt.Println("Function Call:", node.name)
-	if node.name == "wln" {
+	switch node.name {
+	case "wln":
 		if scanner.PeekAdvanceIf(Split, func(str string) bool { return str == "'" }) {
 			literalNode := new(StringLiteralNode)
-			node.parseAndAdd(literalNode, scanner)
+			parseAndAdd(literalNode, node, scanner)
 			if scanner.Next(Split) != endKeyword {
 				panic("Expecting semicolon to end string literal!")
 			}
 		} else {
 			node.parseExpr(scanner, func(token string) bool { return token == endKeyword })
 		}
-	} else if node.name == "rln" {
+		break
+	case "rln":
 		if scanner.Next(Split) != "$" {
 			panic("Expecting reference to 32-bit integer!")
 		}
@@ -66,8 +70,27 @@ func (node *CallFuncNode) Parse(scanner *Scanner) {
 		if scanner.Next(Split) != endKeyword {
 			panic("Expecting semicolon to end function call!")
 		}
-	} else {
-		panic(fmt.Sprintf("Unrecognized function call %s", node.name))
+		break
+	default:
+		if _, isFuncImpl := progNode.funcImpls[node.name]; isFuncImpl {
+			for {
+				nextToken, amount := scanner.Peek(Split)
+				if nextToken == delimKeyword {
+					scanner.SkipBy(amount)
+					continue
+				}
+				if nextToken == endKeyword {
+					break
+				}
+				scanner.Skip(Split)
+				operand := parseOperand(scanner, nextToken)
+				node.children = append(node.children, operand)
+				operand.Parent = node
+			}
+			break
+		} else {
+			panic(fmt.Sprintf("Unrecognized function call %s", node.name))
+		}
 	}
 }
 
@@ -84,11 +107,10 @@ func (node *NamedVarsNode) Parse(scanner *Scanner) {
 		varNode := &SingleNamedVarNode{name: name, typeName: node.typeName}
 		node.children = append(node.children, varNode)
 		nextToken = scanner.Next(Split)
-		if nextToken == assignKeyword {
-			varNode.parseExpr(scanner, func(token string) bool { return token == endKeyword })
-		} else if nextToken != endKeyword {
-			panic("Expected semicolon to end variable definition")
+		if nextToken != assignKeyword {
+			panic("Expected assignment")
 		}
+		varNode.parseExpr(scanner, func(token string) bool { return token == endKeyword })
 		fmt.Println("Variable node:", name)
 	}
 }
@@ -98,6 +120,12 @@ func (node *BaseNode) parseExpr(scanner *Scanner, tokenBreakCond func(token stri
 		nextToken := scanner.Next(Split)
 		if tokenBreakCond(nextToken) {
 			break
+		}
+		if nextToken == "?" {
+			if !tokenBreakCond(scanner.Next(Split)) {
+				panic("Expected end after ?")
+			}
+			return
 		}
 		var child Node
 		if operatorFunc, isOperator := OperatorFactory[nextToken]; isOperator {
@@ -131,27 +159,31 @@ func parseOperand(scanner *Scanner, strVal string) *OperandNode {
 		return operandNode
 	}
 	// Data constructor
-	for _, datDef := range progNode.datDefs {
-		if strVal == datDef.name {
-			operandNode.typeName = datDef.name
-			if scanner.Next(Split) != "{" {
-				panic("Expected block for data property fills")
-			}
-			for {
-				nextToken := scanner.Next(Split)
-				if nextToken == "}" {
-					break
-				}
-				propName := nextToken
-				if scanner.Next(Split) != assignKeyword {
-					panic("Expected assignment!")
-				}
-				propDef := getImmediatePropDef(datDef, propName)
-				fillNode := &PropFill{propDef: propDef}
-				operandNode.parseAndAdd(fillNode, scanner)
-			}
-			return operandNode
+	if datDef, isDat := progNode.datDefs[strVal]; isDat {
+		operandNode.typeName = datDef.name
+		if scanner.Next(Split) != "{" {
+			panic("Expected block for data property fills")
 		}
+		for {
+			nextToken := scanner.Next(Split)
+			if nextToken == "}" {
+				break
+			}
+			propName := nextToken
+			if scanner.Next(Split) != assignKeyword {
+				panic("Expected assignment!")
+			}
+			propDef := getImmediatePropDef(datDef, propName)
+			fillNode := &PropFill{propDef: propDef}
+			parseAndAdd(fillNode, operandNode, scanner)
+		}
+		return operandNode
+	}
+	// Function call
+	if funcImpl, isCall := progNode.funcImpls[strVal]; isCall {
+		callNode := &CallFuncNode{name: strVal}
+		operandNode.typeName = funcImpl.Parent.(*DefFuncNode).retType
+		parseAndAdd(callNode, operandNode, scanner)
 	}
 	// Accessor to existing variable
 	operandNode.accessor = strVal
@@ -159,7 +191,7 @@ func parseOperand(scanner *Scanner, strVal string) *OperandNode {
 }
 
 func (node *PropFill) Parse(scanner *Scanner) {
-	node.parseExpr(scanner, func(token string) bool { return token == "," })
+	node.parseExpr(scanner, func(token string) bool { return token == endKeyword })
 }
 
 func (node *ProgNode) Parse(scanner *Scanner) {
@@ -178,13 +210,13 @@ func (node *ProgNode) Parse(scanner *Scanner) {
 			break
 		}
 		childNode := factory[nextToken]()
-		node.parseAndAdd(childNode, scanner)
+		parseAndAdd(childNode, node, scanner)
 	}
 }
 
 func (node *LoopNode) Parse(scanner *Scanner) {
 	node.start = parseOperand(scanner, scanner.Next(Split))
-	if scanner.Next(Split) != ".." {
+	if scanner.Next(Split) != rangeKeyword {
 		panic("Expected comma")
 	}
 	node.end = parseOperand(scanner, scanner.Next(Split))
@@ -197,7 +229,7 @@ func (node *LoopNode) Parse(scanner *Scanner) {
 		if nextToken == "}" {
 			break
 		}
-		node.parseNextStatementNode(nextToken, scanner)
+		parseNextStatementNode(nextToken, node, scanner)
 	}
 }
 
@@ -254,46 +286,62 @@ findEnd:
 	return word[:wordLength], skipLength + wordLength
 }
 
-func (node *DefineFuncNode) Parse(scanner *Scanner) {
-	parameterType := scanner.Next(Split)
-	if scanner.Next(Split) != "->" {
-		panic("Expected return type!")
+func (node *DefFuncNode) Parse(scanner *Scanner) {
+	for {
+		nextToken := scanner.Next(Split)
+		if nextToken == delimKeyword {
+			continue
+		}
+		if nextToken == "->" {
+			break
+		}
+		parameterType := nextToken
+		if parameterType == "nil" {
+			continue
+		}
+		node.parameterTypes = append(node.parameterTypes, parameterType)
+		fmt.Println("Parameter type:", parameterType)
 	}
-	fmt.Println("Parameter type:", parameterType)
-	returnType := scanner.Next(Split)
+	node.retType = scanner.Next(Split)
 	if scanner.Next(Split) != "{" {
 		panic("Expected body for function definition!")
 	}
-	fmt.Println("Return type:", returnType)
+	fmt.Println("Return type:", node.retType)
 	if scanner.Next(Split) != "imp" {
 		panic("Expected function implementation!")
 	}
 	implNode := new(ImplFuncNode)
-	node.parseAndAdd(implNode, scanner)
+	parseAndAdd(implNode, node, scanner)
+	if scanner.Next(Split) != "}" {
+		panic("Expected close to block!")
+	}
 }
 
 func (node *ImplFuncNode) Parse(scanner *Scanner) {
-	funcName := scanner.Next(Split)
-	fmt.Println("Function name:", funcName)
-	if scanner.Next(Split) != "{" {
-		panic("Expected block in function implementation!")
+	node.name = scanner.Next(Split)
+	progNode.funcImpls[node.name] = node
+	fmt.Println("Function name:", node.name)
+	for {
+		nextToken := scanner.Next(Split)
+		if nextToken == delimKeyword {
+			continue
+		}
+		if nextToken == "{" {
+			break
+		}
+		node.parameterNames = append(node.parameterNames, nextToken)
 	}
 	for {
 		nextToken := scanner.Next(Split)
 		if nextToken == "}" {
 			break
 		}
-		node.parseNextStatementNode(nextToken, scanner)
-		if nextToken == "out" {
-			break
-		}
+		parseNextStatementNode(nextToken, node, scanner)
 	}
 }
 
 func (node *OutNode) Parse(scanner *Scanner) {
-	// TODO:warning implement
-	scanner.Next(Split)
-	scanner.Next(Split)
+	node.parseExpr(scanner, func(token string) bool { return token == endKeyword })
 }
 
 func (node *DefDatNode) Parse(scanner *Scanner) {
@@ -328,7 +376,10 @@ func (node *DefDatNode) Parse(scanner *Scanner) {
 }
 
 // TODO:refactor remove next token and use peek instead
-func (node *BaseNode) parseNextStatementNode(nextToken string, scanner *Scanner) {
+func parseNextStatementNode(nextToken string, parent Node, scanner *Scanner) {
+	if nextToken == endKeyword {
+		return
+	}
 	var childNode ParsableNode
 	if nodeFunc, isNode := factory[nextToken]; isNode {
 		childNode = nodeFunc()
@@ -341,7 +392,7 @@ func (node *BaseNode) parseNextStatementNode(nextToken string, scanner *Scanner)
 	} else {
 		childNode = &CallFuncNode{name: nextToken}
 	}
-	node.parseAndAdd(childNode, scanner)
+	parseAndAdd(childNode, parent, scanner)
 }
 
 func (node *IfNode) Parse(scanner *Scanner) {
@@ -359,7 +410,7 @@ func (node *IfNode) Parse(scanner *Scanner) {
 		if nextToken == "}" {
 			break
 		}
-		node.t.parseNextStatementNode(nextToken, scanner)
+		parseNextStatementNode(nextToken, node.t, scanner)
 	}
 	if !scanner.PeekAdvanceIf(Split, func(str string) bool { return str == "els" }) {
 		return
@@ -372,7 +423,7 @@ func (node *IfNode) Parse(scanner *Scanner) {
 		if nextToken == "}" {
 			break
 		}
-		node.f.parseNextStatementNode(nextToken, scanner)
+		parseNextStatementNode(nextToken, node.f, scanner)
 	}
 }
 
@@ -381,8 +432,8 @@ func (node *AssignmentNode) Parse(scanner *Scanner) {
 	node.parseExpr(scanner, func(token string) bool { return token == endKeyword })
 }
 
-func (node *BaseNode) parseAndAdd(childNode ParsableNode, scanner *Scanner) {
+func parseAndAdd(childNode ParsableNode, parent Node, scanner *Scanner) {
 	childNode.Parse(scanner)
-	childNode.SetParent(node)
-	node.Add(childNode)
+	childNode.SetParent(parent)
+	parent.Add(childNode)
 }

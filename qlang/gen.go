@@ -24,6 +24,13 @@ func getPropDef(datDef *DefDatNode, split []string) *DefDatPropNode {
 }
 
 func genOperandVar(prog *Prog, operand *OperandNode) ScopeVar {
+	// Function call
+	if len(operand.children) == 1 {
+		if funcCall, isFuncCall := operand.children[0].(*CallFuncNode); isFuncCall {
+			funcCall.Generate(prog)
+			return funcCall.retVar
+		}
+	}
 	// Existing variable in scope
 	if len(operand.accessor) > 0 {
 		boundVar := getBoundVar(prog, operand.accessor)
@@ -49,6 +56,7 @@ func genOperandVar(prog *Prog, operand *OperandNode) ScopeVar {
 	basePos := prog.Scope.Alloc(datDef.size)
 	for _, child := range operand.children {
 		fillProp := child.(*PropFill)
+		// New data
 		propPos := fillProp.genExpr(prog)
 		genStackCopy(prog, propPos, ScopeVar{typeName: fillProp.propDef.typeName, stackPos: basePos - fillProp.propDef.offset})
 	}
@@ -128,7 +136,7 @@ func (node *BaseNode) genExpr(prog *Prog) ScopeVar {
 			genOperation("sub")
 			break
 		case *DivisionNode:
-			break
+			panic("Division not supported yet!")
 		}
 	}
 	prog.CurSect.Content = append(prog.CurSect.Content, fmt.Sprintf("mov dword ptr [rbp - %d], eax", exprResVar.stackPos))
@@ -171,31 +179,6 @@ func (node *BaseNode) Generate(prog *Prog) {
 	}
 }
 
-func (node *ImplFuncNode) Generate(prog *Prog) {
-	// TODO:warning detect stack size properly instead of subtracting constant
-	prog.CurSect.Content = append(prog.CurSect.Content,
-		"push rbp",
-		"mov rbp, rsp",
-		"sub rsp, 1024",
-		"",
-	)
-	for _, child := range node.children {
-		child.Generate(prog)
-	}
-	prog.CurSect.Content = append(prog.CurSect.Content,
-		"",
-		"add rsp, 1024",
-		"pop rbp",
-		"ret",
-	)
-}
-
-func (node *OutNode) Generate(prog *Prog) {
-	prog.CurSect.Content = append(prog.CurSect.Content,
-		fmt.Sprintf("mov eax, %d", 0),
-	)
-}
-
 func (node *StringLiteralNode) Generate(prog *Prog) {
 	strLabelNum++
 	asmLabel := fmt.Sprintf("string%d", strLabelNum)
@@ -204,141 +187,6 @@ func (node *StringLiteralNode) Generate(prog *Prog) {
 		Label: asmLabel, Content: []string{fmt.Sprintf(`.string "%s\n"`, node.str)},
 	}
 	prog.ConstSect.SubSects = append(prog.ConstSect.SubSects, msgSubSect)
-}
-
-func (node *LoopNode) Generate(prog *Prog) {
-	startVar, endVar := genOperandVar(prog, node.start), genOperandVar(prog, node.end)
-	loopLabelNum++
-	prog.Scope = NewScope(prog.Scope)
-	counterPos := prog.Scope.Alloc(4)
-	prog.CurSect.Content = append(prog.CurSect.Content,
-		fmt.Sprintf("mov eax, dword ptr [rbp - %d]", startVar.stackPos),
-		fmt.Sprintf("mov dword ptr [rbp - %d], eax # Counter", counterPos),
-	)
-	prog.CurSect.Content = append(prog.CurSect.Content,
-		fmt.Sprintf("_loopCheck%d:", loopLabelNum),
-		fmt.Sprintf("mov eax, dword ptr [rbp - %d]", counterPos),
-		fmt.Sprintf("cmp eax, dword ptr [rbp - %d]", endVar.stackPos),
-		fmt.Sprintf("jge _loopContinue%d", loopLabelNum),
-		fmt.Sprintf("jmp _loopBody%d", loopLabelNum),
-	)
-	prog.CurSect.Content = append(prog.CurSect.Content,
-		fmt.Sprintf("_loopBody%d:", loopLabelNum),
-	)
-	for _, child := range node.children {
-		child.Generate(prog)
-	}
-	prog.CurSect.Content = append(prog.CurSect.Content,
-		fmt.Sprintf("mov eax, dword ptr [rbp - %d]", counterPos),
-		"inc eax",
-		fmt.Sprintf("mov dword ptr [rbp - %d], eax", counterPos),
-		fmt.Sprintf("jmp _loopCheck%d", loopLabelNum),
-	)
-	prog.CurSect.Content = append(prog.CurSect.Content,
-		fmt.Sprintf("_loopContinue%d:", loopLabelNum),
-	)
-	prog.Scope = prog.Scope.Parent
-}
-
-func (node *CallFuncNode) Generate(prog *Prog) {
-	if node.name == "wln" {
-		if strNode, isStr := node.children[0].(*StringLiteralNode); isStr {
-			strNode.Generate(prog)
-			prog.CurSect.Content = append(prog.CurSect.Content,
-				fmt.Sprintf("lea rax, [rip + _%s]", strNode.label),
-				"mov rsi, rax # Pointer to string",
-				fmt.Sprintf("mov rdx, %d # Size", len(strNode.str)+1),
-				"mov rax, 0x2000004 # Write",
-				"mov rdi, 1 # Standard output",
-				"syscall",
-			)
-		} else {
-			prog.Scope = NewScope(prog.Scope)
-			operandPos := node.genExpr(prog).stackPos
-			bufferPos := prog.Scope.Alloc(16)
-			// Algorithm in C: https://gcc.godbolt.org/z/3b2P5j
-			if !libraryLabelExists(prog, "charLoop") {
-				prog.LibrarySubSect.SubSects = append(prog.LibrarySubSect.SubSects, &Sect{
-					Label: "digitToChar",
-					Content: []string{
-						"movabs r8, -3689348814741910323",
-						"xor r9, r9",                 // Character count - xor with self cheaply zeroes
-						"mov byte ptr [rsi - 1], 10", // Add newline at the end
-						"dec rsi",
-						"inc r9",
-					},
-				})
-				prog.LibrarySubSect.SubSects = append(prog.LibrarySubSect.SubSects, &Sect{
-					Label: "charLoop",
-					Content: []string{ // u32: edi, u8[]: rsi
-						"movsxd rax, edi", // Cast signed 32 bit to unsigned 64 bit
-						"mul r8",
-						"shr rdx, 3", // Shift three right
-						"lea eax, [rdx + rdx]",
-						"lea eax, [rax + 4*rax]",
-						"mov ecx, edi",
-						"sub ecx, eax",
-						"or cl, 48",                  // 48 is '0' in ASCII, serves as our base for digit representation
-						"mov byte ptr [rsi - 1], cl", // 1 byte for character
-						"dec rsi",
-						"inc r9",
-						"cmp rdi, 9", // Check if we are above 9 (have more digits left)
-						"mov rdi, rdx",
-						"ja _charLoop", // Check cmp instruction to loop if we have more digits
-						"ret",
-					},
-				})
-				prog.Scope = prog.Scope.Parent
-			}
-			prog.CurSect.Content = append(prog.CurSect.Content,
-				fmt.Sprintf("mov edi, dword ptr [rbp - %d] # Integer argument", operandPos),
-				fmt.Sprintf("lea rsi, [rbp - %d] # Buffer pointer argument", bufferPos-16),
-				"call _digitToChar",
-				// fmt.Sprintf("lea rsi, [rbp - %d]", bufferPos),
-				"mov rdx, r9 # Size",
-				"mov rax, 0x2000004 # Write system call identifier",
-				"mov rdi, 1 # Standard output file descriptor",
-				"syscall", // edi already set earlier
-			)
-		}
-	} else if node.name == "rln" {
-		// Algorithm in C: https://godbolt.org/z/qKpeBB
-		bufferPos := prog.Scope.Alloc(16)
-		ref := genOperandVar(prog, node.children[0].(*OperandNode))
-		if !libraryLabelExists(prog, "asciiToInt32") {
-			prog.LibrarySubSect.SubSects = append(prog.LibrarySubSect.SubSects, &Sect{
-				Label: "asciiToInt32",
-				Content: []string{
-					"xor edx, edx",
-					"xor eax, eax",
-					"dec esi",
-					"_whileBody:",
-					"cmp esi, edx",
-					"jle _whileEnd",
-					"imul eax, eax, 10",
-					"movsx ecx, byte ptr [rdi+rdx]",
-					"inc rdx",
-					"lea eax, [rax-48+rcx]",
-					"jmp _whileBody",
-					"_whileEnd:",
-					"ret",
-				},
-			})
-		}
-		prog.CurSect.Content = append(prog.CurSect.Content,
-			fmt.Sprintf("lea rsi, [rbp - %d] # Pointer to ASCII buffer", bufferPos),
-			fmt.Sprintf("mov rdx, %d # Size", 16),
-			"mov rax, 0x2000003 # Read system call identifier",
-			"mov rdi, 0 # Standard input file descriptor",
-			"syscall",
-
-			"mov esi, eax # Length of characters",
-			fmt.Sprintf("lea rdi, [rbp - %d] # Pointer to ASCII buffer", bufferPos),
-			"call _asciiToInt32",
-
-			fmt.Sprintf("mov dword ptr [rbp - %d], eax", ref.stackPos),
-		)
-	}
 }
 
 func libraryLabelExists(prog *Prog, labelName string) bool {
@@ -350,33 +198,6 @@ func libraryLabelExists(prog *Prog, labelName string) bool {
 		}
 	}
 	return has
-}
-
-func (node *IfNode) Generate(prog *Prog) {
-	v1, v2 := genOperandVar(prog, node.o1), genOperandVar(prog, node.o2)
-	falseLabelNum := ifLabelNum
-	prog.CurSect.Content = append(prog.CurSect.Content,
-		fmt.Sprintf("mov eax, dword ptr [rbp - %d]", v1.stackPos),
-		fmt.Sprintf("cmp eax, dword ptr [rbp - %d]", v2.stackPos),
-		fmt.Sprintf("jne _iff%d", falseLabelNum),
-	)
-	prog.Scope = NewScope(prog.Scope)
-	for _, child := range node.t.children {
-		child.Generate(prog)
-	}
-	prog.Scope = prog.Scope.Parent
-	ifLabelNum++
-	escapeLabelNum := ifLabelNum
-	prog.CurSect.Content = append(prog.CurSect.Content,
-		fmt.Sprintf("jmp _iff%d", escapeLabelNum),
-		fmt.Sprintf("_iff%d:", falseLabelNum),
-	)
-	prog.Scope = NewScope(prog.Scope)
-	for _, child := range node.f.children {
-		child.Generate(prog)
-	}
-	prog.Scope = prog.Scope.Parent
-	prog.CurSect.Content = append(prog.CurSect.Content, fmt.Sprintf("_iff%d:", escapeLabelNum))
 }
 
 func (node *ProgNode) Generate(prog *Prog) {
