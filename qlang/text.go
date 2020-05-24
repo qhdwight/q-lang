@@ -26,7 +26,7 @@ func NewProg() *Prog {
 			Decorators: []string{"data"},
 		},
 		FuncSect: &Sect{
-			Decorators: []string{"text", "intel_syntax noprefix", "globl main"},
+			Decorators: []string{"text", "intel_syntax noprefix", "globl _main"},
 		},
 	}
 	prog.LibrarySubSect = new(Sect)
@@ -48,9 +48,9 @@ func (sect *Sect) ToString(builder *strings.Builder, indent int) string {
 	}
 	if len(sect.Label) > 0 {
 		builder.WriteString(strings.Repeat(" ", indent))
-		if sect.Label != "main" {
-			builder.WriteString("_")
-		}
+		// if sect.Label != "main" {
+		// }
+		builder.WriteString("_")
 		builder.WriteString(sect.Label)
 		builder.WriteString(":")
 		builder.WriteString("\n")

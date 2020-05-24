@@ -1,7 +1,0 @@
-pkg main {
-    def void -> i32 {
-        imp main {
-            pln 'Hello World';
-        }
-    }
-}

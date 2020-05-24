@@ -1,24 +1,28 @@
 package main
 
+const (
+	ifKeyword = "iff"
+)
+
 var (
 	// Allows us to take q-lang code, which is raw text, and convert it into a node-based Go representation
 	factory = map[string]func() ParsableNode{
-		"iff": func() ParsableNode { return new(IfNode) },
-		"pkg": func() ParsableNode { return new(PckgNode) },
-		"def": func() ParsableNode { return new(DefineFuncNode) },
-		"imp": func() ParsableNode { return new(ImplFuncNode) },
-		"dat": func() ParsableNode { return new(DefDatNode) },
-		"out": func() ParsableNode { return new(OutNode) },
-		"for": func() ParsableNode { return new(LoopNode) },
+		ifKeyword: func() ParsableNode { return new(IfNode) },
+		"pkg":     func() ParsableNode { return new(PckgNode) },
+		"def":     func() ParsableNode { return new(DefineFuncNode) },
+		"imp":     func() ParsableNode { return new(ImplFuncNode) },
+		"dat":     func() ParsableNode { return new(DefDatNode) },
+		"out":     func() ParsableNode { return new(OutNode) },
+		"for":     func() ParsableNode { return new(LoopNode) },
 	}
 	OperatorFactory = map[string]func() OperationalNode{
-		"+": func() OperationalNode { return new(AdditionNode) },
+		"+": func() OperationalNode { return new(AddNode) },
 		"-": func() OperationalNode { return new(SubtractionNode) },
-		"*": func() OperationalNode { return new(MultiplicationNode) },
+		"*": func() OperationalNode { return new(MulNode) },
 		"/": func() OperationalNode { return new(DivisionNode) },
 	}
 	// TODO:refactor operators are defined in two locations. Add better system for managing tokens
-	tokens = []string{";", "..", ",", "&&", "||", "{", "}", "(", ")", "->", "+", "-", "*", "/", "'", ":=", "=", "$", "&"}
+	tokens = []string{endKeyword, "..", ",", "&&", "||", "{", "}", "(", ")", "->", "+", "-", "*", "/", "'", assignKeyword, "$", "&"}
 )
 
 type (
@@ -114,13 +118,13 @@ type (
 	OperatorNode struct {
 		ExpressionNode
 	}
-	AdditionNode struct {
+	AddNode struct {
 		OperatorNode
 	}
 	SubtractionNode struct {
 		OperatorNode
 	}
-	MultiplicationNode struct {
+	MulNode struct {
 		OperatorNode
 	}
 	DivisionNode struct {

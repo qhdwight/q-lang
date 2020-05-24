@@ -1,0 +1,27 @@
+pkg main {
+    dat inputs_d {
+        u32 { a; b; }
+    }
+    def void -> u32 {
+        imp main {
+            u32 { c; }
+            inputs_d { i <- inputs_d{}; }
+            wln 'Enter first number!';
+            rln $i.a;
+
+            wln 'Enter second number!';
+            rln $i.b;
+
+            c <- i.a + i.b;
+            wln c;
+
+            iff c = 25 {
+                for i.a..i.b {
+                    wln 'Secret!';
+                }
+            } els {
+                wln 'No secret!';
+            }
+        }
+    }
+}

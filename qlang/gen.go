@@ -33,9 +33,9 @@ func genOperandVar(prog *Prog, operand *OperandNode) ScopeVar {
 		return boundVar
 	}
 	// New int
-	if operand.typeName == "i32" {
-		pos := prog.Scope.Alloc(getSizeOfType("i32"))
-		operandScopeVar := ScopeVar{typeName: "i32", stackPos: pos}
+	if operand.typeName == uintKeyword {
+		pos := prog.Scope.Alloc(getSizeOfType(uintKeyword))
+		operandScopeVar := ScopeVar{typeName: uintKeyword, stackPos: pos}
 		if len(operand.literalVal) > 0 {
 			i, err := strconv.Atoi(operand.literalVal)
 			if err == nil {
@@ -72,7 +72,7 @@ func getBoundVar(prog *Prog, accessor string) ScopeVar {
 }
 
 func getSizeOfType(name string) int {
-	if name == "i32" {
+	if name == uintKeyword {
 		return 4
 	} else {
 		return progNode.datDefs[name].size
@@ -92,7 +92,7 @@ func genStackCopy(prog *Prog, src, dst ScopeVar) {
 	// 		fmt.Sprintf("mov byte ptr [rbp - %d], dl", dst.stackPos-i),
 	// 	)
 	// }
-	for i := 0; i < size; i+=4 {
+	for i := 0; i < size; i += 4 {
 		prog.CurSect.Content = append(prog.CurSect.Content,
 			fmt.Sprintf("mov edx, dword ptr [rbp - %d]", src.stackPos-i),
 			fmt.Sprintf("mov dword ptr [rbp - %d], edx", dst.stackPos-i),
@@ -112,11 +112,22 @@ func (node *BaseNode) genExpr(prog *Prog) ScopeVar {
 	// Multiple operands in expression with operators in between
 	prog.CurSect.Content = append(prog.CurSect.Content, fmt.Sprintf("mov eax, dword ptr [rbp - %d]", exprResVar.stackPos))
 	for nodeIndex, child := range node.children {
-		switch child.(type) {
-		case *AdditionNode:
+		genOperation := func(opName string) {
 			rhsOperand := node.children[nodeIndex+1].(*OperandNode)
 			rhsVar := genOperandVar(prog, rhsOperand)
-			prog.CurSect.Content = append(prog.CurSect.Content, fmt.Sprintf("add eax, dword ptr [rbp - %d]", rhsVar.stackPos))
+			prog.CurSect.Content = append(prog.CurSect.Content, fmt.Sprintf("%s eax, dword ptr [rbp - %d]", opName, rhsVar.stackPos))
+		}
+		switch child.(type) {
+		case *AddNode:
+			genOperation("add")
+			break
+		case *MulNode:
+			genOperation("imul")
+			break
+		case *SubtractionNode:
+			genOperation("sub")
+			break
+		case *DivisionNode:
 			break
 		}
 	}
@@ -131,7 +142,9 @@ func (node *AssignmentNode) Generate(prog *Prog) {
 
 func (node *SingleNamedVarNode) Generate(prog *Prog) {
 	namedVar := prog.Scope.BindNamedVar(node)
-	node.genAssignmentPhrase(prog, namedVar)
+	if len(node.children) > 0 {
+		node.genAssignmentPhrase(prog, namedVar)
+	}
 }
 
 func (node *BaseNode) genAssignmentPhrase(prog *Prog, dstVar ScopeVar) {
@@ -235,7 +248,7 @@ func (node *CallFuncNode) Generate(prog *Prog) {
 				fmt.Sprintf("lea rax, [rip + _%s]", strNode.label),
 				"mov rsi, rax # Pointer to string",
 				fmt.Sprintf("mov rdx, %d # Size", len(strNode.str)+1),
-				"mov rax, 1 # Write",
+				"mov rax, 0x2000004 # Write",
 				"mov rdi, 1 # Standard output",
 				"syscall",
 			)
@@ -257,7 +270,7 @@ func (node *CallFuncNode) Generate(prog *Prog) {
 				})
 				prog.LibrarySubSect.SubSects = append(prog.LibrarySubSect.SubSects, &Sect{
 					Label: "charLoop",
-					Content: []string{ // i32: edi, u8[]: rsi
+					Content: []string{ // u32: edi, u8[]: rsi
 						"movsxd rax, edi", // Cast signed 32 bit to unsigned 64 bit
 						"mul r8",
 						"shr rdx, 3", // Shift three right
@@ -283,15 +296,15 @@ func (node *CallFuncNode) Generate(prog *Prog) {
 				"call _digitToChar",
 				// fmt.Sprintf("lea rsi, [rbp - %d]", bufferPos),
 				"mov rdx, r9 # Size",
-				"mov rax, 1 # Write system call identifier",
+				"mov rax, 0x2000004 # Write system call identifier",
 				"mov rdi, 1 # Standard output file descriptor",
 				"syscall", // edi already set earlier
 			)
 		}
 	} else if node.name == "rln" {
-		// https://godbolt.org/z/qKpeBB
+		// Algorithm in C: https://godbolt.org/z/qKpeBB
 		bufferPos := prog.Scope.Alloc(16)
-		i32Ref := genOperandVar(prog, node.children[0].(*OperandNode))
+		ref := genOperandVar(prog, node.children[0].(*OperandNode))
 		if !libraryLabelExists(prog, "asciiToInt32") {
 			prog.LibrarySubSect.SubSects = append(prog.LibrarySubSect.SubSects, &Sect{
 				Label: "asciiToInt32",
@@ -315,7 +328,7 @@ func (node *CallFuncNode) Generate(prog *Prog) {
 		prog.CurSect.Content = append(prog.CurSect.Content,
 			fmt.Sprintf("lea rsi, [rbp - %d] # Pointer to ASCII buffer", bufferPos),
 			fmt.Sprintf("mov rdx, %d # Size", 16),
-			"mov rax, 0 # Read system call identifier",
+			"mov rax, 0x2000003 # Read system call identifier",
 			"mov rdi, 0 # Standard input file descriptor",
 			"syscall",
 
@@ -323,7 +336,7 @@ func (node *CallFuncNode) Generate(prog *Prog) {
 			fmt.Sprintf("lea rdi, [rbp - %d] # Pointer to ASCII buffer", bufferPos),
 			"call _asciiToInt32",
 
-			fmt.Sprintf("mov dword ptr [rbp - %d], eax", i32Ref.stackPos),
+			fmt.Sprintf("mov dword ptr [rbp - %d], eax", ref.stackPos),
 		)
 	}
 }

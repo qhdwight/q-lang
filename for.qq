@@ -1,0 +1,9 @@
+pkg main {
+    def void -> u32 {
+        imp main {
+            for 0..3 {
+                wln 'Hello world!';
+            }
+        }
+    }
+}
