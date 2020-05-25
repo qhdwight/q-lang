@@ -7,12 +7,14 @@ import (
 	"os/exec"
 )
 
+var (
+	outputProgram *string
+)
+
 func main() {
-	inputFiles := flag.String("input", "", "Input Q files")
+	inputFiles := flag.String("input", "program.qq", "Input Q files")
+	outputProgram = flag.String("output", "program", "Output program file")
 	flag.Parse()
-	if *inputFiles == "" {
-		panic("No input Q files provided!")
-	}
 	prog := Parse(*inputFiles)
 
 	asm := NewProg()
@@ -28,7 +30,7 @@ func assemble(assembly *Prog) {
 	if err != nil {
 		panic(err)
 	}
-	command := exec.Command("gcc", "program.s", "-o", "program")
+	command := exec.Command("gcc", "program.s", "-o", *outputProgram)
 	fmt.Println("Running command:", command.String())
 	// Run GCC to create native binary from assembly code
 	// We want combined output since it shows standard output and error.

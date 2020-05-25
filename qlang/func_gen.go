@@ -15,15 +15,17 @@ func (node *CallFuncNode) Generate(prog *Prog) {
 		retStackPos := prog.Scope.Alloc(getSizeOfType(funcDef.retType))
 		node.retVar = ScopeVar{typeName: funcDef.retType, stackPos: retStackPos}
 		prog.CurSect.Content = append(prog.CurSect.Content, fmt.Sprintf("lea rdi, dword ptr [rbp - %d] # Return stack pointer", retStackPos))
+		j := 0
 		for paraIdx, paraType := range funcDef.parameterTypes {
 			paraVar := genOperandVar(prog, node.children[paraIdx].(*OperandNode))
 			paraSize := getSizeOfType(paraType)
+			j += paraSize
 			// Copy parameters from source frame to destination frame
 			for i := 0; i < paraSize; i += 4 {
 				prog.CurSect.Content = append(prog.CurSect.Content,
-					fmt.Sprintf("mov eax, dword ptr [rbp - %d]", paraVar.stackPos+i),
+					fmt.Sprintf("mov eax, dword ptr [rbp - %d]", paraVar.stackPos-i),
 					fmt.Sprintf("mov dword ptr [rsp - %d], eax # Copy parameter %s to called function stack frame",
-						paraIdx*paraSize+i+16+4+8, funcImpl.parameterNames[paraIdx]), // 16 bytes padding for call operation, 4 for dword size, 8 for return stack position pointer (rdi)
+						j-i+16+8, funcImpl.parameterNames[paraIdx]), // 16 bytes padding for call operation, 8 for return stack position pointer (rdi)
 				)
 			}
 		}
@@ -51,7 +53,9 @@ func (node *OutNode) Generate(prog *Prog) {
 
 func (node *ImplFuncNode) Generate(prog *Prog) {
 	// TODO:warning detect stack size properly instead of subtracting constant
-	prog.Scope = NewScope(prog.Scope)
+	callerScope := prog.Scope
+	prog.Scope = &Scope{vars: make(map[Node]ScopeVar)}
+
 	if node.name != "main" { // Main function does not use our protocol of placing return variable pointer in rdi
 		prog.Scope.Alloc(8)
 	}
@@ -81,5 +85,5 @@ func (node *ImplFuncNode) Generate(prog *Prog) {
 	)
 	prog.FuncSect.SubSects = append(prog.FuncSect.SubSects, prog.CurSect)
 
-	prog.Scope = prog.Scope.Parent
+	prog.Scope = callerScope
 }

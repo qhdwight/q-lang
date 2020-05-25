@@ -1,0 +1,27 @@
+pkg main {
+    dat test_d {
+        u32 { a; b; }
+        f32 { c; }
+    }
+    def nil -> u32 {
+        imp main {
+            test_d { t <- test_d{a <- 3; b <- 2; c <- 3.0; }; }
+            u32 { z <- 0; }
+            z <- 3 + 2 + 3;
+            t.a <- 5;
+            t.b <- z + 32;
+            itr 0...3 {
+                z <- z + 3;
+            }
+            wln z;
+            wln t.a;
+            wln t.b;
+            wln t.c;
+            t.c <- t.c + 3.0;
+            wln t.c;
+            t.c <- t.c / 5.0;
+            wln t.c;
+            out 0;
+        }
+    }
+}

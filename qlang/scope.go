@@ -33,7 +33,6 @@ func (scope *Scope) BindUnnamed(node Node, scopeVar ScopeVar) ScopeVar {
 func NewScope(parent *Scope) *Scope {
 	newScope := &Scope{
 		vars:   make(map[Node]ScopeVar),
-		Head:   0,
 		Parent: parent,
 	}
 	if parent == nil {

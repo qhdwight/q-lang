@@ -14,54 +14,176 @@ func (node *CallFuncNode) writeLine(prog *Prog) {
 			"syscall",
 		)
 	} else {
-		prog.Scope = NewScope(prog.Scope)
-		operandPos := node.genExpr(prog).stackPos
-		bufferPos := prog.Scope.Alloc(16)
-		// Algorithm in C: https://gcc.godbolt.org/z/3b2P5j
-		if !libraryLabelExists(prog, "charLoop") {
-			prog.LibrarySubSect.SubSects = append(prog.LibrarySubSect.SubSects, &Sect{
-				Label: "digitToChar",
-				Content: []string{
-					"movabs r8, -3689348814741910323",
-					"xor r9, r9",                 // Character count - xor with self cheaply zeroes
-					"mov byte ptr [rsi - 1], 10", // Add newline at the end
-					"dec rsi",
-					"inc r9",
-				},
-			})
-			prog.LibrarySubSect.SubSects = append(prog.LibrarySubSect.SubSects, &Sect{
-				Label: "charLoop",
-				Content: []string{ // u32: edi, u8[]: rsi
-					"movsxd rax, edi", // Cast signed 32 bit to unsigned 64 bit
-					"mul r8",
-					"shr rdx, 3", // Shift three right
-					"lea eax, [rdx + rdx]",
-					"lea eax, [rax + 4*rax]",
-					"mov ecx, edi",
-					"sub ecx, eax",
-					"or cl, 48",                  // 48 is '0' in ASCII, serves as our base for digit representation
-					"mov byte ptr [rsi - 1], cl", // 1 byte for character
-					"dec rsi",
-					"inc r9",
-					"cmp rdi, 9", // Check if we are above 9 (have more digits left)
-					"mov rdi, rdx",
-					"ja _charLoop", // Check cmp instruction to loop if we have more digits
-					"ret",
-				},
-			})
-			prog.Scope = prog.Scope.Parent
+		typeName := genOperandVar(prog, node.children[0].(*OperandNode)).typeName
+		if typeName == uintKeyword {
+			node.writeUInt(prog)
+		} else if typeName == floatKeyword {
+			node.writeFloat(prog)
+		} else {
+			panic("Type not supported for printing")
 		}
-		prog.CurSect.Content = append(prog.CurSect.Content,
-			fmt.Sprintf("mov edi, dword ptr [rbp - %d] # Integer argument", operandPos),
-			fmt.Sprintf("lea rsi, [rbp - %d] # Buffer pointer argument", bufferPos-16),
-			"call _digitToChar",
-			// fmt.Sprintf("lea rsi, [rbp - %d]", bufferPos),
-			"mov rdx, r9 # Size",
-			"mov rax, 0x2000004 # Write system call identifier",
-			"mov rdi, 1 # Standard output file descriptor",
-			"syscall", // edi already set earlier
-		)
 	}
+}
+
+func (node *CallFuncNode) writeFloat(prog *Prog) {
+	// https://godbolt.org/z/UpTbKK
+	if !libraryLabelExists(prog, "floatToAscii") {
+		prog.LibrarySubSect.SubSects = append(prog.LibrarySubSect.SubSects, &Sect{
+			Label: "floatToAscii",
+			Content: []string{
+				"xorps xmm1, xmm1",
+				"comiss xmm1, xmm0",
+				"movaps xmm1, xmm0",
+				"jbe _L13",
+				"mulss xmm1, dword ptr _LC1[rip]",
+				"mov ecx, 10000",
+				"cvttss2si eax, xmm1",
+				"movaps xmm1, xmm0",
+				"xorps xmm1, xmmword PTR _LC2[rip]",
+				"cdq",
+				"idiv ecx",
+				"cvttss2si ecx, xmm1",
+				"mov eax, edx",
+				"jmp _L4",
+			},
+		}, &Sect{
+			Label: "L13",
+			Content: []string{
+				"mulss xmm1, dword ptr _LC3[rip]",
+				"mov ecx, 10000",
+				"cvttss2si eax, xmm1",
+				"cdq",
+				"idiv ecx",
+				"cvttss2si ecx, xmm0",
+				"mov eax, edx",
+			},
+		}, &Sect{
+			Label: "L4",
+			Content: []string{
+				"mov byte ptr [rdi+15], 10",
+				"xor esi, esi",
+				"mov r8d, 10",
+			},
+		}, &Sect{
+			Label: "L5",
+			Content: []string{
+				"xor edx, edx",
+				"div r8w",
+				"add edx, 48",
+				"mov byte ptr [rdi+14+rsi], dl",
+				"dec rsi",
+				"cmp rsi, -4",
+				"jne _L5",
+				"mov byte ptr [rdi+10], 46",
+				"lea rsi, [rdi+10]",
+				"mov r8d, 6",
+				"mov edi, 10",
+			},
+		}, &Sect{
+			Label: "L7",
+			Content: []string{
+				"test ecx, ecx",
+				"jle _L6",
+				"mov eax, ecx",
+				"dec rsi",
+				"inc r8d",
+				"cdq",
+				"idiv edi",
+				"add edx, 48",
+				"mov ecx, eax",
+				"mov byte ptr [rsi], dl",
+				"jmp _L7",
+			},
+		}, &Sect{
+			Label: "L6",
+			Content: []string{
+				"xorps xmm1, xmm1",
+				"comiss xmm1, xmm0",
+				"jbe _L1",
+				"mov byte ptr [rsi-1], 45",
+			},
+		}, &Sect{
+			Label: "L1",
+			Content: []string{
+				"mov eax, r8d",
+				"ret",
+				"_LC1:",
+				".long -971227136",
+				"_LC2:",
+				".long -2147483648",
+				".long 0",
+				".long 0",
+				".long 0",
+				"_LC3:",
+				".long 1176256512",
+			},
+		})
+	}
+	prog.Scope = NewScope(prog.Scope)
+	operandPos := node.genExpr(prog).stackPos
+	bufferPos := prog.Scope.Alloc(16)
+	prog.CurSect.Content = append(prog.CurSect.Content,
+		fmt.Sprintf("movups xmm0, xmmword ptr [rbp - %d] # Float argument", operandPos),
+		fmt.Sprintf("lea rdi, [rbp - %d] # Buffer pointer argument", bufferPos),
+		"call _floatToAscii",
+		fmt.Sprintf("lea rsi, [rbp - %d] # Buffer pointer argument", bufferPos-16),
+		"sub rsi, rax",
+		"mov rdx, rax # Size",
+		"mov rax, 0x2000004 # Write system call identifier",
+		"mov rdi, 1 # Standard output file descriptor",
+		"syscall",
+	)
+	prog.Scope = prog.Scope.Parent
+}
+
+func (node *CallFuncNode) writeUInt(prog *Prog) {
+	prog.Scope = NewScope(prog.Scope)
+	operandPos := node.genExpr(prog).stackPos
+	bufferPos := prog.Scope.Alloc(16)
+	// Algorithm in C: https://gcc.godbolt.org/z/3b2P5j
+	if !libraryLabelExists(prog, "uintToAscii") {
+		prog.LibrarySubSect.SubSects = append(prog.LibrarySubSect.SubSects, &Sect{
+			Label: "uintToAscii",
+			Content: []string{
+				"movabs r8, -3689348814741910323",
+				"xor r9, r9",                 // Character count - xor with self cheaply zeroes
+				"mov byte ptr [rsi - 1], 10", // Add newline at the end
+				"dec rsi",
+				"inc r9",
+			},
+		})
+		prog.LibrarySubSect.SubSects = append(prog.LibrarySubSect.SubSects, &Sect{
+			Label: "charLoop",
+			Content: []string{ // u32: edi, u8[]: rsi
+				"movsxd rax, edi", // Cast signed 32 bit to unsigned 64 bit
+				"mul r8",
+				"shr rdx, 3", // Shift three right
+				"lea eax, [rdx + rdx]",
+				"lea eax, [rax + 4*rax]",
+				"mov ecx, edi",
+				"sub ecx, eax",
+				"or cl, 48",                  // 48 is '0' in ASCII, serves as our base for digit representation
+				"mov byte ptr [rsi - 1], cl", // 1 byte for character
+				"dec rsi",
+				"inc r9",
+				"cmp rdi, 9", // Check if we are above 9 (have more digits left)
+				"mov rdi, rdx",
+				"ja _charLoop", // Check cmp instruction to loop if we have more digits
+				"ret",
+			},
+		})
+	}
+	prog.CurSect.Content = append(prog.CurSect.Content,
+		fmt.Sprintf("mov edi, dword ptr [rbp - %d] # Integer argument", operandPos),
+		fmt.Sprintf("lea rsi, [rbp - %d] # Buffer pointer argument", bufferPos-16),
+		"call _uintToAscii",
+		// fmt.Sprintf("lea rsi, [rbp - %d]", bufferPos),
+		"mov rdx, r9 # Size",
+		"mov rax, 0x2000004 # Write system call identifier",
+		"mov rdi, 1 # Standard output file descriptor",
+		"syscall", // edi already set earlier
+	)
+	prog.Scope = prog.Scope.Parent
 }
 
 func (node *CallFuncNode) readLine(prog *Prog) {

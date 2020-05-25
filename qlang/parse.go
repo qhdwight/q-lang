@@ -15,6 +15,7 @@ var (
 
 const (
 	uintKeyword   = "u32"
+	floatKeyword  = "f32"
 	assignKeyword = "<-"
 	endKeyword    = ";"
 	rangeKeyword  = "..."
@@ -59,7 +60,6 @@ func (node *CallFuncNode) Parse(scanner *Scanner) {
 		} else {
 			node.parseExpr(scanner, func(token string) bool { return token == endKeyword })
 		}
-		break
 	case "rln":
 		if scanner.Next(Split) != "$" {
 			panic("Expecting reference to 32-bit integer!")
@@ -70,7 +70,6 @@ func (node *CallFuncNode) Parse(scanner *Scanner) {
 		if scanner.Next(Split) != endKeyword {
 			panic("Expecting semicolon to end function call!")
 		}
-		break
 	default:
 		if _, isFuncImpl := progNode.funcImpls[node.name]; isFuncImpl {
 			for {
@@ -87,7 +86,6 @@ func (node *CallFuncNode) Parse(scanner *Scanner) {
 				node.children = append(node.children, operand)
 				operand.Parent = node
 			}
-			break
 		} else {
 			panic(fmt.Sprintf("Unrecognized function call %s", node.name))
 		}
@@ -154,8 +152,13 @@ func parseOperand(scanner *Scanner, strVal string) *OperandNode {
 	// Unsigned 32-bit integer literal
 	_, err := strconv.Atoi(strVal)
 	if err == nil {
-		operandNode.typeName = uintKeyword
-		operandNode.literalVal = strVal
+		operandNode.typeName, operandNode.literalVal = uintKeyword, strVal
+		return operandNode
+	}
+	// 32-bit float literal
+	_, err = strconv.ParseFloat(strVal, 64)
+	if err == nil {
+		operandNode.typeName, operandNode.literalVal = floatKeyword, strVal
 		return operandNode
 	}
 	// Data constructor
@@ -383,7 +386,7 @@ func parseNextStatementNode(nextToken string, parent Node, scanner *Scanner) {
 	var childNode ParsableNode
 	if nodeFunc, isNode := factory[nextToken]; isNode {
 		childNode = nodeFunc()
-	} else if nextToken == uintKeyword {
+	} else if nextToken == uintKeyword || nextToken == floatKeyword {
 		childNode = &NamedVarsNode{typeName: nextToken}
 	} else if datDef, isDatDef := progNode.datDefs[nextToken]; isDatDef {
 		childNode = &NamedVarsNode{typeName: datDef.name}

@@ -4,7 +4,7 @@ Hello! This is the repository for my work in progress language. It is a fun way 
 
 ## Examples
 
-### [Calculator](calculator.qq)
+### [Calculator](examples/calculator.qq)
 
 ```
 pkg main {

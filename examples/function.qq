@@ -1,0 +1,27 @@
+pkg main {
+    dat test_d {
+        u32 { a; b; }
+    }
+    def test_d, test_d -> test_d {
+        imp calculate x, y {
+            wln x.a;
+            wln x.b;
+            wln y.a;
+            wln y.b;
+            out test_d{a <- 5; b <- 6; };
+        }
+    }
+    def nil -> u32 {
+        imp main {
+            test_d { x <- test_d{a <- 1; b <- 2; }; y <- test_d{a <- 3; b <- 2+2; }; }
+            wln x.a;
+            wln x.b;
+            wln y.a;
+            wln y.b;
+            test_d { z <- calculate x, y; }
+            wln z.a;
+            wln z.b;
+            out 0;
+        }
+    }
+}

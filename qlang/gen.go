@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -39,15 +40,18 @@ func genOperandVar(prog *Prog, operand *OperandNode) ScopeVar {
 		}
 		return boundVar
 	}
-	// New int
-	if operand.typeName == uintKeyword {
-		pos := prog.Scope.Alloc(getSizeOfType(uintKeyword))
-		operandScopeVar := ScopeVar{typeName: uintKeyword, stackPos: pos}
+	// New literal
+	if operand.typeName == uintKeyword || operand.typeName == floatKeyword {
+		pos := prog.Scope.Alloc(getSizeOfType(operand.typeName))
+		operandScopeVar := ScopeVar{typeName: operand.typeName, stackPos: pos}
 		if len(operand.literalVal) > 0 {
-			i, err := strconv.Atoi(operand.literalVal)
-			if err == nil {
-				prog.CurSect.Content = append(prog.CurSect.Content, fmt.Sprintf("mov dword ptr [rbp - %d], %d # Integer literal", pos, i))
+			var asmVal int
+			if i, err := strconv.Atoi(operand.literalVal); err == nil {
+				asmVal = i
+			} else if f, err := strconv.ParseFloat(operand.literalVal, 32); err == nil {
+				asmVal = int(math.Float32bits(float32(f)))
 			}
+			prog.CurSect.Content = append(prog.CurSect.Content, fmt.Sprintf("mov dword ptr [rbp - %d], %d # Literal", pos, asmVal))
 		}
 		return operandScopeVar
 	}
@@ -80,7 +84,7 @@ func getBoundVar(prog *Prog, accessor string) ScopeVar {
 }
 
 func getSizeOfType(name string) int {
-	if name == uintKeyword {
+	if name == uintKeyword || name == floatKeyword {
 		return 4
 	} else {
 		return progNode.datDefs[name].size
@@ -111,6 +115,14 @@ func genStackCopy(prog *Prog, src, dst ScopeVar) {
 func (node *BaseNode) genExpr(prog *Prog) ScopeVar {
 	child0 := node.children[0].(*OperandNode)
 	var0 := genOperandVar(prog, child0)
+	typeMap := func(i, f string) string {
+		if var0.typeName == uintKeyword {
+			return i
+		} else if var0.typeName == floatKeyword {
+			return f
+		}
+		panic("Type not supported!")
+	}
 	exprResVar := genOperandVar(prog, &OperandNode{typeName: child0.typeName}) // Create clone
 	genStackCopy(prog, var0, exprResVar)
 	prog.CurSect.Content = append(prog.CurSect.Content, fmt.Sprintf("# Expression base %+v", exprResVar))
@@ -118,28 +130,40 @@ func (node *BaseNode) genExpr(prog *Prog) ScopeVar {
 		return exprResVar
 	}
 	// Multiple operands in expression with operators in between
-	prog.CurSect.Content = append(prog.CurSect.Content, fmt.Sprintf("mov eax, dword ptr [rbp - %d]", exprResVar.stackPos))
+	if var0.typeName == uintKeyword {
+		prog.CurSect.Content = append(prog.CurSect.Content, fmt.Sprintf("mov eax, dword ptr [rbp - %d]", exprResVar.stackPos))
+	} else {
+		prog.CurSect.Content = append(prog.CurSect.Content, fmt.Sprintf("movups xmm0, xmmword ptr [rbp - %d]", exprResVar.stackPos))
+	}
+	regName := typeMap("eax", "xmm0")
 	for nodeIndex, child := range node.children {
 		genOperation := func(opName string) {
-			rhsOperand := node.children[nodeIndex+1].(*OperandNode)
-			rhsVar := genOperandVar(prog, rhsOperand)
-			prog.CurSect.Content = append(prog.CurSect.Content, fmt.Sprintf("%s eax, dword ptr [rbp - %d]", opName, rhsVar.stackPos))
+			rhsVar := genOperandVar(prog, node.children[nodeIndex+1].(*OperandNode))
+			prog.CurSect.Content = append(prog.CurSect.Content, fmt.Sprintf("%s %s, dword ptr [rbp - %d]", opName, regName, rhsVar.stackPos))
 		}
 		switch child.(type) {
 		case *AddNode:
-			genOperation("add")
-			break
+			genOperation(typeMap("add", "addss"))
 		case *MulNode:
-			genOperation("imul")
-			break
+			genOperation(typeMap("imul", "mulss"))
 		case *SubtractionNode:
-			genOperation("sub")
-			break
+			genOperation(typeMap("sub", "subss"))
 		case *DivisionNode:
-			panic("Division not supported yet!")
+			if var0.typeName == uintKeyword {
+				rhsVar := genOperandVar(prog, node.children[nodeIndex+1].(*OperandNode))
+				prog.CurSect.Content = append(prog.CurSect.Content,
+					"xor edx, edx # Clear dividend",
+					fmt.Sprintf("div dword ptr [rbp - %d]", rhsVar.stackPos))
+			} else {
+				genOperation("divss")
+			}
 		}
 	}
-	prog.CurSect.Content = append(prog.CurSect.Content, fmt.Sprintf("mov dword ptr [rbp - %d], eax", exprResVar.stackPos))
+	if var0.typeName == uintKeyword {
+		prog.CurSect.Content = append(prog.CurSect.Content, fmt.Sprintf("mov dword ptr [rbp - %d], eax", exprResVar.stackPos))
+	} else {
+		prog.CurSect.Content = append(prog.CurSect.Content, fmt.Sprintf("movups xmmword ptr [rbp - %d], xmm0", exprResVar.stackPos))
+	}
 	return exprResVar
 }
 
