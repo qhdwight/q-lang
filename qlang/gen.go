@@ -148,6 +148,12 @@ func (node *BaseNode) genExpr(prog *Prog) ScopeVar {
 			genOperation(typeMap("imul", "mulss"))
 		case *SubtractionNode:
 			genOperation(typeMap("sub", "subss"))
+		case *AndNode:
+			genOperation("and")
+		case *OrNode:
+			genOperation("or")
+		case *XorNode:
+			genOperation("xor")
 		case *DivisionNode:
 			if var0.typeName == uintKeyword {
 				rhsVar := genOperandVar(prog, node.children[nodeIndex+1].(*OperandNode))

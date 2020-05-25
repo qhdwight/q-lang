@@ -20,9 +20,12 @@ var (
 		"-": func() OperationalNode { return new(SubtractionNode) },
 		"*": func() OperationalNode { return new(MulNode) },
 		"/": func() OperationalNode { return new(DivisionNode) },
+		"&": func() OperationalNode { return new(AndNode) },
+		"|": func() OperationalNode { return new(OrNode) },
+		"^": func() OperationalNode { return new(XorNode) },
 	}
 	// TODO:refactor operators are defined in two locations. Add better system for managing tokens
-	tokens = []string{endKeyword, rangeKeyword, delimKeyword, "&&", "||", "{", "}", "(", ")", "->", "+", "-", "*", "/", "'", assignKeyword, "$", "&"}
+	tokens = []string{endKeyword, rangeKeyword, delimKeyword, "&&", "&", "||", "|", "{", "}", "(", ")", "->", "+", "-", "*", "/", "'", assignKeyword, "$", "&"}
 )
 
 type (
@@ -135,6 +138,15 @@ type (
 	}
 	DivisionNode struct {
 		OperatorNode
+	}
+	AndNode struct {
+		OperatorNode
+	}
+	OrNode struct {
+		OperandNode
+	}
+	XorNode struct {
+		OperandNode
 	}
 
 	/* Control flow */

@@ -4,7 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"os/exec"
+	"path/filepath"
 )
 
 var (
@@ -26,11 +28,13 @@ func main() {
 
 func assemble(assembly *Prog) {
 	// TODO currently we write to file first and then call GCC. Find a way to pass it without file as we don't really want to touch the filesystem
-	err := ioutil.WriteFile("program.s", []byte(assembly.ToString()), 0644)
+	asmFilePath := fmt.Sprintf("%s.s", *outputProgram)
+	_ = os.MkdirAll(filepath.Dir(asmFilePath), 0644)
+	err := ioutil.WriteFile(asmFilePath, []byte(assembly.ToString()), 0644)
 	if err != nil {
 		panic(err)
 	}
-	command := exec.Command("gcc", "program.s", "-o", *outputProgram)
+	command := exec.Command("gcc", asmFilePath, "-o", *outputProgram)
 	fmt.Println("Running command:", command.String())
 	// Run GCC to create native binary from assembly code
 	// We want combined output since it shows standard output and error.
