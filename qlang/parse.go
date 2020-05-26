@@ -386,7 +386,7 @@ func parseNextStatementNode(nextToken string, parent Node, scanner *Scanner) {
 	var childNode ParsableNode
 	if nodeFunc, isNode := factory[nextToken]; isNode {
 		childNode = nodeFunc()
-	} else if nextToken == uintKeyword || nextToken == floatKeyword {
+	} else if nextToken == uintKeyword || nextToken == floatKeyword || nextToken == "arr" {
 		childNode = &NamedVarsNode{typeName: nextToken}
 	} else if datDef, isDatDef := progNode.datDefs[nextToken]; isDatDef {
 		childNode = &NamedVarsNode{typeName: datDef.name}

@@ -35,9 +35,7 @@ func NewScope(parent *Scope) *Scope {
 		vars:   make(map[Node]ScopeVar),
 		Parent: parent,
 	}
-	if parent == nil {
-		newScope.Base = 0
-	} else {
+	if parent != nil {
 		newScope.Base = parent.Head
 		newScope.Head = parent.Head
 		for k, v := range parent.vars {

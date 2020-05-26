@@ -1,0 +1,9 @@
+pkg main {
+    def nil -> u32 {
+        imp main {
+            # arr|u32|5| { a := {}; }
+            # vec|u32| { b := {}; }
+            wln 'Hello!';
+        }
+    }
+}

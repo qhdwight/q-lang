@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"runtime"
 	"strings"
 )
 
@@ -20,12 +22,14 @@ type (
 )
 
 func NewProg() *Prog {
+
 	prog := &Prog{
 		ConstSect: &Sect{
 			Decorators: []string{"data"},
 		},
 		FuncSect: &Sect{
-			Decorators: []string{"text", "intel_syntax noprefix", "globl _main"},
+			Decorators: []string{"text", "intel_syntax noprefix",
+				fmt.Sprintf("globl %s", strTernary(runtime.GOOS == "linux", "main", "_main"))},
 		},
 	}
 	prog.LibrarySubSect = new(Sect)
@@ -43,9 +47,9 @@ func (sect *Sect) ToString(builder *strings.Builder, indent int) string {
 	}
 	if len(sect.Label) > 0 {
 		builder.WriteString(strings.Repeat(" ", indent))
-		// if sect.Label != "main" {
-		// }
-		builder.WriteString("_")
+		if sect.Label != "main" || runtime.GOOS != "linux" {
+			builder.WriteString("_")
+		}
 		builder.WriteString(sect.Label)
 		builder.WriteString(":")
 		builder.WriteString("\n")

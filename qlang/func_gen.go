@@ -54,7 +54,7 @@ func (node *OutNode) Generate(prog *Prog) {
 func (node *ImplFuncNode) Generate(prog *Prog) {
 	// TODO:warning detect stack size properly instead of subtracting constant
 	callerScope := prog.Scope
-	prog.Scope = &Scope{vars: make(map[Node]ScopeVar)}
+	prog.Scope = NewScope(nil)
 
 	if node.name != "main" { // Main function does not use our protocol of placing return variable pointer in rdi
 		prog.Scope.Alloc(8)

@@ -112,6 +112,14 @@ func genStackCopy(prog *Prog, src, dst ScopeVar) {
 	}
 }
 
+func strTernary(cond bool, s0, s1 string) string {
+	if cond {
+		return s0
+	} else {
+		return s1
+	}
+}
+
 func (node *BaseNode) genExpr(prog *Prog) ScopeVar {
 	child0 := node.children[0].(*OperandNode)
 	var0 := genOperandVar(prog, child0)

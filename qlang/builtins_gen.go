@@ -1,6 +1,33 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"runtime"
+)
+
+const (
+	writeSyscall = iota
+	readSyscall
+)
+
+func getSyscall(id int) string {
+	if runtime.GOOS == "linux" {
+		switch id {
+		case writeSyscall:
+			return "0x1"
+		case readSyscall:
+			return "0x0"
+		}
+	} else if runtime.GOOS == "darwin" {
+		switch id {
+		case writeSyscall:
+			return "0x2000004"
+		case readSyscall:
+			return "0x2000003"
+		}
+	}
+	panic("Unsupported OS")
+}
 
 func (node *CallFuncNode) writeLine(prog *Prog) {
 	if strNode, isStr := node.children[0].(*StringLiteralNode); isStr {
@@ -8,11 +35,11 @@ func (node *CallFuncNode) writeLine(prog *Prog) {
 		prog.CurSect.Content = append(prog.CurSect.Content,
 			fmt.Sprintf("lea rax, [rip + _%s]", strNode.label),
 			"mov rsi, rax # Pointer to string",
-			fmt.Sprintf("mov rdx, %d # Size", len(strNode.str)+1),
-			"mov rax, 0x2000004 # Write",
+		fmt.Sprintf("mov rdx, %d # Size", len(strNode.str)+1),
+			fmt.Sprintf("mov rax, %s # Write system call identifier", getSyscall(writeSyscall)),
 			"mov rdi, 1 # Standard output",
 			"syscall",
-		)
+	)
 	} else {
 		typeName := genOperandVar(prog, node.children[0].(*OperandNode)).typeName
 		if typeName == uintKeyword {
@@ -129,7 +156,7 @@ func (node *CallFuncNode) writeFloat(prog *Prog) {
 		fmt.Sprintf("lea rsi, [rbp - %d] # Buffer pointer argument", bufferPos-16),
 		"sub rsi, rax",
 		"mov rdx, rax # Size",
-		"mov rax, 0x2000004 # Write system call identifier",
+		fmt.Sprintf("mov rax, %s # Write system call identifier", getSyscall(writeSyscall)),
 		"mov rdi, 1 # Standard output file descriptor",
 		"syscall",
 	)
@@ -179,7 +206,7 @@ func (node *CallFuncNode) writeUInt(prog *Prog) {
 		"call _uintToAscii",
 		// fmt.Sprintf("lea rsi, [rbp - %d]", bufferPos),
 		"mov rdx, r9 # Size",
-		"mov rax, 0x2000004 # Write system call identifier",
+		fmt.Sprintf("mov rax, %s # Write system call identifier", getSyscall(writeSyscall)),
 		"mov rdi, 1 # Standard output file descriptor",
 		"syscall", // edi already set earlier
 	)
@@ -213,7 +240,7 @@ func (node *CallFuncNode) readLine(prog *Prog) {
 	prog.CurSect.Content = append(prog.CurSect.Content,
 		fmt.Sprintf("lea rsi, [rbp - %d] # Pointer to ASCII buffer", bufferPos),
 		fmt.Sprintf("mov rdx, %d # Size", 16),
-		"mov rax, 0x2000003 # Read system call identifier",
+		fmt.Sprintf("mov rax, %s # Write system call identifier", getSyscall(readSyscall)),
 		"mov rdi, 0 # Standard input file descriptor",
 		"syscall",
 
