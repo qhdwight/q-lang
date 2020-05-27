@@ -1,0 +1,23 @@
+pkg main {
+    dat position_d {
+        f32 { x; y; z; }
+    }
+    dat input_d {
+        f32 { dir; }
+    }
+    sys move_s position_d,input_d {
+        imp p,i {
+            p.x <- p.x + i.dir;
+        }
+    }
+    def nil -> u32 {
+        imp main {
+            position_d { p <- position_d { 0f; 0f; 0f; }; }
+            input_d { i <- input_d { 1f; }; }
+            move_s { m; };
+            exc;
+
+            wln p.x;
+        }
+    }
+}

@@ -356,6 +356,11 @@ func (node *DefDatNode) Parse(scanner *Scanner) {
 	}
 	for {
 		nextToken := scanner.Next(Split)
+		if nextToken == "!derive" {
+			kind := scanner.Next(Split)
+			fmt.Println(kind)
+			nextToken = scanner.Next(Split)
+		}
 		if nextToken == "}" {
 			break
 		}

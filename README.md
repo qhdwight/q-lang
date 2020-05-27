@@ -150,4 +150,4 @@ iff 25 = 25 {
 
 ### 7. Math
 
-The `+`, `-`, and `*` operators are currently supported between 32-bit unsigned integers.
+The `+`, `-`, and `*` operators work between two u32's or two f32's. `/` is less tested but should work.

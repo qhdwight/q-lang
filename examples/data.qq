@@ -1,5 +1,6 @@
 pkg main {
     dat test_d {
+        !derive add
         u32 { a; b; }
         f32 { c; }
     }
