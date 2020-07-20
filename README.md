@@ -2,6 +2,8 @@
 
 Hello! This is the repository for my work in progress language. It is a fun way for me to learn about assembly and language design.
 
+It currently compiles Q-Lang into x86 assembly and then assembles it with GCC (so you must have that in your path). Mac and Linux only for now.
+
 ## Examples
 
 ### [Calculator](examples/calculator.qq)
@@ -150,4 +152,4 @@ iff 25 = 25 {
 
 ### 7. Math
 
-The `+`, `-`, and `*` operators are currently supported between 32-bit unsigned integers.
+The `+`, `-`, `*`, and `/` operators are currently supported between 32-bit unsigned integers and 32-bit floating points.
