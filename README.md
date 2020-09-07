@@ -1,3 +1,5 @@
+# [Try it Online!](http://www.quintin.cloud/qlang)
+
 # Q-Lang
 
 Hello! This is the repository for my work in progress language. It is a fun way for me to learn about assembly and language design.
