@@ -1,4 +1,5 @@
 # [Try it Online!](http://www.quintin.cloud/qlang)
+##### May take a bit to load the first time (sets up Docker image)
 
 # Q-Lang
 
