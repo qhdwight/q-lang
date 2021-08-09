@@ -1,3 +1,7 @@
+# NOTE
+
+I've learned a lot since high school — my next language will probably use LLVM as a backend and a library for grammar instead of manual code generation and text parsing
+
 # [Try it Online!](http://www.quintin.cloud/qlang)
 ##### May take a bit to load the first time (sets up Docker image)
 
